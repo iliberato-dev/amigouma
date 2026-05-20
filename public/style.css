@@ -48,7 +48,10 @@ nav button {
   font-family: "Baloo 2", cursive;
   letter-spacing: 0.2px;
   box-shadow: 0 6px 18px rgba(23, 32, 51, 0.08);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
 
 nav button:hover {
@@ -93,7 +96,9 @@ textarea {
   font-size: 1rem;
   font-family: "Nunito", sans-serif;
   background: rgba(255, 255, 255, 0.95);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 input:focus,
@@ -122,7 +127,10 @@ button[type="submit"] {
   font-weight: 700;
   letter-spacing: 0.3px;
   box-shadow: 0 10px 20px rgba(14, 165, 233, 0.35);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
 }
 
 button[type="submit"]:hover {
@@ -151,6 +159,45 @@ button[type="submit"]:hover {
   color: #0c4a6e;
 }
 
+.table-wrapper {
+  margin-top: 1rem;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 620px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid #e9edf5;
+  font-size: 0.95rem;
+}
+
+th {
+  background: #f4f8ff;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+tbody tr:nth-child(even) {
+  background: #fbfdff;
+}
+
+.empty-state {
+  margin-top: 1rem;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 700;
+}
+
 @media (max-width: 900px) {
   main {
     width: min(94%, 760px);
@@ -177,5 +224,11 @@ button[type="submit"]:hover {
 
   label {
     font-size: 0.95rem;
+  }
+
+  th,
+  td {
+    font-size: 0.88rem;
+    padding: 0.6rem;
   }
 }

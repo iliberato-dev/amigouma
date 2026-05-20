@@ -69,10 +69,11 @@ function showForm() {
 
 function showCount() {
   document.getElementById("main-content").innerHTML = `
-        <h2>Contagem de Amigos UMA</h2>
+        <h2>Cadastrados com informações da tabela</h2>
         <div id="count">Carregando...</div>
+        <div id="table-container"></div>
     `;
-  fetchCount();
+  fetchRegistered();
 }
 
 // Função para enviar cadastro para Google Sheets
@@ -106,16 +107,80 @@ function enviarCadastro(e) {
     });
 }
 
-// Função para buscar a contagem de cadastros
-function fetchCount() {
-  jsonpRequest(APPS_SCRIPT_URL, { action: "count" })
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderTable(rows) {
+  if (!rows.length) {
+    return '<p class="empty-state">Nenhum cadastrado encontrado.</p>';
+  }
+
+  const tableRows = rows
+    .map(
+      (row) => `
+      <tr>
+        <td>${escapeHtml(row.nome_cadastrante)}</td>
+        <td>${escapeHtml(row.congregacao)}</td>
+        <td>${escapeHtml(row.nome_amigo)}</td>
+        <td>${escapeHtml(row.telefone)}</td>
+        <td>${escapeHtml(row.endereco)}</td>
+      </tr>
+    `,
+    )
+    .join("");
+
+  return `
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Cadastrante</th>
+            <th>Congregação</th>
+            <th>Amigo UMA</th>
+            <th>Telefone</th>
+            <th>Endereço</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+// Função para buscar cadastrados e contagem
+function fetchRegistered() {
+  jsonpRequest(APPS_SCRIPT_URL, { action: "list" })
     .then((data) => {
+      if (Array.isArray(data.rows)) {
+        document.getElementById("count").textContent =
+          data.rows.length + " cadastrados";
+        document.getElementById("table-container").innerHTML = renderTable(
+          data.rows,
+        );
+        return;
+      }
+
+      if (typeof data.count === "number") {
+        document.getElementById("count").textContent =
+          data.count + " cadastrados";
+        document.getElementById("table-container").innerHTML =
+          '<p class="empty-state">API ainda sem listagem. Atualize o Apps Script para action=list.</p>';
+        return;
+      }
+
       document.getElementById("count").textContent =
-        data.count + " pessoas cadastradas";
+        "Resposta inválida da API.";
     })
     .catch(() => {
       document.getElementById("count").textContent =
-        "Erro ao carregar contagem.";
+        "Erro ao carregar cadastrados.";
+      document.getElementById("table-container").innerHTML = "";
     });
 }
 
