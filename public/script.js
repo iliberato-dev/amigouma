@@ -1,5 +1,5 @@
 const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzKwVva_8YzAw97X4H86gGqIRZa3azbmZ5qhPGr8u8BPGBR7E2QnddqOEtP1IZaJ6oz7Q/exec";
+  "https://script.google.com/macros/s/AKfycbxIwBH8lpOJ4n0hlTjh_Knib5mY8viOSTlfsSmHS7KyvdI8tog6e5skIz3Y5Jj1KzbpkA/exec";
 
 // Requisição JSONP para contornar CORS no Google Apps Script.
 function jsonpRequest(url, params = {}) {
