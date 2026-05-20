@@ -157,6 +157,19 @@ function renderTable(rows) {
 function fetchRegistered() {
   jsonpRequest(APPS_SCRIPT_URL, { action: "list" })
     .then((data) => {
+      if (data && data.result === "ok") {
+        return jsonpRequest(APPS_SCRIPT_URL, { action: "count" }).then(
+          (countData) => {
+            const total =
+              typeof countData.count === "number" ? countData.count : 0;
+            document.getElementById("count").textContent =
+              total + " cadastrados";
+            document.getElementById("table-container").innerHTML =
+              '<p class="empty-state">Sua API ainda nao retorna a lista. Reimplante o Apps Script com action=list.</p>';
+          },
+        );
+      }
+
       if (Array.isArray(data.rows)) {
         document.getElementById("count").textContent =
           data.rows.length + " cadastrados";
@@ -176,6 +189,8 @@ function fetchRegistered() {
 
       document.getElementById("count").textContent =
         "Resposta inválida da API.";
+      document.getElementById("table-container").innerHTML =
+        '<p class="empty-state">Verifique se a URL implantada do Apps Script e a mais recente.</p>';
     })
     .catch(() => {
       document.getElementById("count").textContent =
