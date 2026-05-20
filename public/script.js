@@ -1,3 +1,45 @@
+const APPS_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbzKwVva_8YzAw97X4H86gGqIRZa3azbmZ5qhPGr8u8BPGBR7E2QnddqOEtP1IZaJ6oz7Q/exec";
+
+// Requisição JSONP para contornar CORS no Google Apps Script.
+function jsonpRequest(url, params = {}) {
+  return new Promise((resolve, reject) => {
+    const callbackName = `cb_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+    const script = document.createElement("script");
+    const query = new URLSearchParams({ ...params, callback: callbackName });
+    const fullUrl = `${url}?${query.toString()}`;
+
+    let timeoutId;
+
+    window[callbackName] = (data) => {
+      clearTimeout(timeoutId);
+      resolve(data);
+      cleanup();
+    };
+
+    const cleanup = () => {
+      delete window[callbackName];
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    };
+
+    script.onerror = () => {
+      clearTimeout(timeoutId);
+      cleanup();
+      reject(new Error("Falha na requisição"));
+    };
+
+    timeoutId = setTimeout(() => {
+      cleanup();
+      reject(new Error("Tempo de resposta excedido"));
+    }, 12000);
+
+    script.src = fullUrl;
+    document.body.appendChild(script);
+  });
+}
+
 // Funções para alternar entre abas
 function showForm() {
   document.getElementById("main-content").innerHTML = `
@@ -44,14 +86,10 @@ function enviarCadastro(e) {
     telefone: form.telefone.value,
     endereco: form.endereco.value,
   };
-  // Substitua a URL abaixo pela URL do seu Apps Script
-  fetch("https://script.google.com/macros/s/AKfycby5OGSC-AL5ovWYLFBf8_sU_VIzkC9O5_t32Y6MVGr5rTvCfd5M2cb4wcEthwuc99EwsQ/exec", {
-    method: "POST",
-    mode: "cors",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+  jsonpRequest(APPS_SCRIPT_URL, {
+    action: "add",
+    ...data,
   })
-    .then((res) => res.json())
     .then((resp) => {
       if (resp.result === "success") {
         document.getElementById("form-message").innerHTML =
@@ -70,9 +108,7 @@ function enviarCadastro(e) {
 
 // Função para buscar a contagem de cadastros
 function fetchCount() {
-  // Substitua a URL abaixo pela URL do seu Apps Script
-  fetch("https://script.google.com/macros/s/AKfycby5OGSC-AL5ovWYLFBf8_sU_VIzkC9O5_t32Y6MVGr5rTvCfd5M2cb4wcEthwuc99EwsQ/exec?count=1")
-    .then((res) => res.json())
+  jsonpRequest(APPS_SCRIPT_URL, { action: "count" })
     .then((data) => {
       document.getElementById("count").textContent =
         data.count + " pessoas cadastradas";

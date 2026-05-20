@@ -1,62 +1,128 @@
+* {
+  box-sizing: border-box;
+}
+
 body {
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
   background: #f7f7f7;
 }
+
 nav {
   background: #005baa;
   color: #fff;
-  padding: 1em;
+  padding: 0.9rem 1rem;
   display: flex;
-  gap: 1em;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
 }
+
 nav button {
   background: #fff;
   color: #005baa;
   border: none;
-  padding: 0.5em 1em;
+  padding: 0.65rem 1rem;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 1rem;
+  min-height: 44px;
 }
+
 nav button:hover {
   background: #e0e0e0;
 }
+
 main {
-  max-width: 500px;
-  margin: 2em auto;
+  width: min(92%, 680px);
+  margin: 1.5rem auto;
   background: #fff;
-  padding: 2em;
+  padding: 1.5rem;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
+
+h2 {
+  margin-top: 0;
+  font-size: clamp(1.25rem, 2.8vw, 1.8rem);
+}
+
 label {
   display: block;
-  margin-top: 1em;
+  margin-top: 0.9rem;
+  font-weight: 600;
 }
+
 input,
 textarea {
   width: 100%;
-  padding: 0.5em;
-  margin-top: 0.3em;
+  padding: 0.7rem;
+  margin-top: 0.35rem;
   border: 1px solid #ccc;
   border-radius: 4px;
+  font-size: 1rem;
 }
+
+textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
 button[type="submit"] {
   background: #005baa;
   color: #fff;
-  margin-top: 1em;
+  margin-top: 1rem;
+  width: 100%;
+  border: none;
+  padding: 0.85rem 1rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  min-height: 46px;
+  cursor: pointer;
 }
+
 .success {
   color: green;
-  margin-top: 1em;
+  margin-top: 0.8rem;
 }
+
 .error {
   color: red;
-  margin-top: 1em;
+  margin-top: 0.8rem;
 }
+
 #count {
-  font-size: 2em;
+  font-size: clamp(1.6rem, 6vw, 2.3rem);
   text-align: center;
-  margin-top: 1em;
+  margin-top: 1rem;
+}
+
+@media (max-width: 900px) {
+  main {
+    width: min(94%, 760px);
+    margin: 1.25rem auto;
+    padding: 1.25rem;
+  }
+}
+
+@media (max-width: 600px) {
+  nav {
+    justify-content: stretch;
+  }
+
+  nav button {
+    flex: 1 1 calc(50% - 0.75rem);
+  }
+
+  main {
+    width: 95%;
+    margin: 1rem auto;
+    padding: 1rem;
+    border-radius: 6px;
+  }
+
+  label {
+    font-size: 0.95rem;
+  }
 }
