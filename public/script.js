@@ -4,6 +4,11 @@ const APPS_SCRIPT_URL =
 const GOOGLE_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1uQKBF1ADRcwUdTy8ORg9xDDeURV4gTL10oCRVf1cBys/edit?gid=0#gid=0";
 
+let registeredRows = [];
+let filteredRows = [];
+let currentPage = 1;
+const PAGE_SIZE = 10;
+
 // Requisição JSONP para contornar CORS no Google Apps Script.
 function jsonpRequest(url, params = {}) {
   return new Promise((resolve, reject) => {
@@ -73,38 +78,106 @@ function showForm() {
                 <input type="text" name="nome_amigo" required>
             </label>
             <label>Telefone do amigo UMA:
-                <input type="tel" name="telefone" required>
+                <input type="tel" name="telefone" maxlength="15" placeholder="(99) 99999-9999" required>
             </label>
             <label>Endereço do amigo UMA:
-                <textarea name="endereco" required></textarea>
+                <textarea name="endereco" maxlength="180" required></textarea>
             </label>
-            <button type="submit">Cadastrar</button>
+            <button id="submit-button" type="submit">Cadastrar</button>
             <div id="form-message"></div>
         </form>
     `;
-  document.getElementById("cadastroForm").onsubmit = enviarCadastro;
+  const form = document.getElementById("cadastroForm");
+  form.onsubmit = enviarCadastro;
+
+  form.telefone.addEventListener("input", (event) => {
+    event.target.value = formatPhone(event.target.value);
+  });
 }
 
 function showCount() {
   document.getElementById("main-content").innerHTML = `
         <h2>Cadastrados com informações da tabela</h2>
         <div id="count">Carregando...</div>
+        <div id="table-filters" class="table-filters hidden">
+          <input id="search-input" type="text" placeholder="Buscar por nome, telefone ou endereço">
+          <select id="congregacao-filter">
+            <option value="">Todas as congregações</option>
+          </select>
+        </div>
         <div id="table-container"></div>
     `;
   fetchRegistered();
+}
+
+function digitsOnly(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function formatPhone(value) {
+  const digits = digitsOnly(value).slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+function validateFormData(data) {
+  const telefoneLimpo = digitsOnly(data.telefone);
+
+  if (data.nome_cadastrante.trim().length < 2) {
+    return "Informe o nome de quem esta cadastrando.";
+  }
+
+  if (data.congregacao.trim().length < 2) {
+    return "Informe a congregacao.";
+  }
+
+  if (data.nome_amigo.trim().length < 2) {
+    return "Informe o nome do amigo UMA.";
+  }
+
+  if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
+    return "Telefone invalido. Use DDD + numero.";
+  }
+
+  if (data.endereco.trim().length < 5) {
+    return "Endereco muito curto.";
+  }
+
+  return "";
 }
 
 // Função para enviar cadastro para Google Sheets
 function enviarCadastro(e) {
   e.preventDefault();
   const form = e.target;
+  const submitButton = document.getElementById("submit-button");
+
+  if (submitButton.disabled) {
+    return;
+  }
+
   const data = {
-    nome_cadastrante: form.nome_cadastrante.value,
-    congregacao: form.congregacao.value,
-    nome_amigo: form.nome_amigo.value,
-    telefone: form.telefone.value,
-    endereco: form.endereco.value,
+    nome_cadastrante: form.nome_cadastrante.value.trim(),
+    congregacao: form.congregacao.value.trim(),
+    nome_amigo: form.nome_amigo.value.trim(),
+    telefone: form.telefone.value.trim(),
+    endereco: form.endereco.value.trim(),
   };
+
+  const validationError = validateFormData(data);
+  if (validationError) {
+    document.getElementById("form-message").innerHTML =
+      `<span class="error">${validationError}</span>`;
+    return;
+  }
+
+  submitButton.disabled = true;
+  submitButton.textContent = "Enviando...";
+
   jsonpRequest(APPS_SCRIPT_URL, {
     action: "add",
     ...data,
@@ -122,6 +195,10 @@ function enviarCadastro(e) {
     .catch(() => {
       document.getElementById("form-message").innerHTML =
         '<span class="error">Erro de conexão.</span>';
+    })
+    .finally(() => {
+      submitButton.disabled = false;
+      submitButton.textContent = "Cadastrar";
     });
 }
 
@@ -171,8 +248,143 @@ function renderTable(rows) {
   `;
 }
 
+function renderPagination(totalItems, totalPages, page) {
+  if (totalItems === 0 || totalPages <= 1) {
+    return "";
+  }
+
+  const start = (page - 1) * PAGE_SIZE + 1;
+  const end = Math.min(page * PAGE_SIZE, totalItems);
+
+  let pageButtons = "";
+  for (let i = 1; i <= totalPages; i += 1) {
+    pageButtons += `
+      <button class="page-btn${i === page ? " active" : ""}" data-page="${i}" type="button">
+        ${i}
+      </button>
+    `;
+  }
+
+  return `
+    <div class="pagination-wrap">
+      <p class="pagination-info">Mostrando ${start}-${end} de ${totalItems}</p>
+      <div class="pagination-controls">
+        <button class="page-btn" data-page="${page - 1}" type="button" ${page === 1 ? "disabled" : ""}>Anterior</button>
+        ${pageButtons}
+        <button class="page-btn" data-page="${page + 1}" type="button" ${page === totalPages ? "disabled" : ""}>Proxima</button>
+      </div>
+    </div>
+  `;
+}
+
+function bindPaginationEvents(totalPages) {
+  const buttons = document.querySelectorAll(".page-btn[data-page]");
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextPage = Number(button.dataset.page);
+      if (!Number.isFinite(nextPage)) return;
+      if (nextPage < 1 || nextPage > totalPages || nextPage === currentPage)
+        return;
+      currentPage = nextPage;
+      renderFilteredResults();
+    });
+  });
+}
+
+function renderFilteredResults() {
+  const total = filteredRows.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  currentPage = Math.min(currentPage, totalPages);
+
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const pageRows = filteredRows.slice(startIndex, startIndex + PAGE_SIZE);
+
+  document.getElementById("count").textContent = total + " cadastrados";
+  document.getElementById("table-container").innerHTML =
+    renderTable(pageRows) + renderPagination(total, totalPages, currentPage);
+
+  bindPaginationEvents(totalPages);
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function applyTableFilters() {
+  const searchInput = document.getElementById("search-input");
+  const congregacaoFilter = document.getElementById("congregacao-filter");
+  if (!searchInput || !congregacaoFilter) return;
+
+  const term = normalizeText(searchInput.value.trim());
+  const selectedCongregacao = normalizeText(congregacaoFilter.value);
+
+  filteredRows = registeredRows.filter((row) => {
+    const rowCongregacao = normalizeText(row.congregacao);
+    const searchable = normalizeText(
+      `${row.nome_cadastrante} ${row.nome_amigo} ${row.telefone} ${row.endereco}`,
+    );
+
+    const matchesCongregacao =
+      !selectedCongregacao || rowCongregacao === selectedCongregacao;
+    const matchesTerm = !term || searchable.includes(term);
+
+    return matchesCongregacao && matchesTerm;
+  });
+
+  currentPage = 1;
+  renderFilteredResults();
+}
+
+function setupTableFilters(rows) {
+  const filterWrap = document.getElementById("table-filters");
+  const searchInput = document.getElementById("search-input");
+  const congregacaoFilter = document.getElementById("congregacao-filter");
+
+  if (!filterWrap || !searchInput || !congregacaoFilter) return;
+
+  const congregacoes = Array.from(
+    new Set(
+      rows
+        .map((row) => String(row.congregacao || "").trim())
+        .filter((value) => value.length > 0),
+    ),
+  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+  congregacaoFilter.innerHTML =
+    '<option value="">Todas as congregações</option>' +
+    congregacoes
+      .map(
+        (nome) =>
+          `<option value="${escapeHtml(nome)}">${escapeHtml(nome)}</option>`,
+      )
+      .join("");
+
+  if (!searchInput.dataset.bound) {
+    searchInput.addEventListener("input", applyTableFilters);
+    congregacaoFilter.addEventListener("change", applyTableFilters);
+    searchInput.dataset.bound = "1";
+  }
+
+  filterWrap.classList.remove("hidden");
+}
+
+function hideTableFilters() {
+  const filterWrap = document.getElementById("table-filters");
+  if (filterWrap) {
+    filterWrap.classList.add("hidden");
+  }
+}
+
 // Função para buscar cadastrados e contagem
 function fetchRegistered() {
+  registeredRows = [];
+  filteredRows = [];
+  currentPage = 1;
+  hideTableFilters();
+
   jsonpRequest(APPS_SCRIPT_URL, { action: "list" })
     .then((data) => {
       if (data && data.result === "ok") {
@@ -189,11 +401,9 @@ function fetchRegistered() {
       }
 
       if (Array.isArray(data.rows)) {
-        document.getElementById("count").textContent =
-          data.rows.length + " cadastrados";
-        document.getElementById("table-container").innerHTML = renderTable(
-          data.rows,
-        );
+        registeredRows = data.rows;
+        setupTableFilters(registeredRows);
+        applyTableFilters();
         return;
       }
 
