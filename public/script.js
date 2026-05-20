@@ -134,7 +134,7 @@ function showLogin(message = "") {
         <input type="password" name="senha" autocomplete="current-password" required>
       </label>
       <button id="login-submit" type="submit">Entrar</button>
-      <p id="login-message" class="login-help">Credenciais padrao: admin / setor53</p>
+    
     </form>
   `;
 
