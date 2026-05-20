@@ -145,6 +145,10 @@ nav button:hover {
   box-shadow: 0 10px 22px rgba(23, 32, 51, 0.14);
 }
 
+.nav-link.locked {
+  opacity: 0.6;
+}
+
 .nav-link:hover {
   background: #ffffff;
   transform: translateY(-1px);
@@ -287,6 +291,28 @@ button[type="submit"]:disabled {
 
 .hidden {
   display: none;
+}
+
+.login-box {
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.login-hint {
+  margin: 0.1rem 0 0.8rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.login-help {
+  margin-top: 0.8rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+  text-align: center;
 }
 
 table {

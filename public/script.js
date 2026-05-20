@@ -4,10 +4,63 @@ const APPS_SCRIPT_URL =
 const GOOGLE_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1uQKBF1ADRcwUdTy8ORg9xDDeURV4gTL10oCRVf1cBys/edit?gid=0#gid=0";
 
+const AUTH_STORAGE_KEY = "uma_auth_ok";
+const LOGIN_USER = "admin";
+const LOGIN_PASSWORD = "setor53";
+
 let registeredRows = [];
 let filteredRows = [];
 let currentPage = 1;
 const PAGE_SIZE = 10;
+
+function isAuthenticated() {
+  return sessionStorage.getItem(AUTH_STORAGE_KEY) === "1";
+}
+
+function setAuthenticated(value) {
+  if (value) {
+    sessionStorage.setItem(AUTH_STORAGE_KEY, "1");
+  } else {
+    sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+  updateAuthUI();
+}
+
+function updateAuthUI() {
+  const authButton = document.getElementById("auth-button");
+  const sheetLink = document.getElementById("sheet-link");
+  const logged = isAuthenticated();
+
+  if (authButton) {
+    authButton.textContent = logged ? "Sair" : "Entrar";
+  }
+
+  if (sheetLink) {
+    if (logged && GOOGLE_SHEET_URL.startsWith("http")) {
+      sheetLink.href = GOOGLE_SHEET_URL;
+      sheetLink.classList.remove("locked");
+      sheetLink.removeAttribute("aria-disabled");
+    } else {
+      sheetLink.href = "#";
+      sheetLink.classList.add("locked");
+      sheetLink.setAttribute("aria-disabled", "true");
+    }
+  }
+}
+
+function setupAuthButton() {
+  const authButton = document.getElementById("auth-button");
+  if (!authButton) return;
+
+  authButton.addEventListener("click", () => {
+    if (isAuthenticated()) {
+      setAuthenticated(false);
+      showForm();
+      return;
+    }
+    showLogin();
+  });
+}
 
 // Requisição JSONP para contornar CORS no Google Apps Script.
 function jsonpRequest(url, params = {}) {
@@ -52,15 +105,61 @@ function setupSheetLink() {
   const link = document.getElementById("sheet-link");
   if (!link) return;
 
-  if (GOOGLE_SHEET_URL.startsWith("http")) {
-    link.href = GOOGLE_SHEET_URL;
+  link.addEventListener("click", (e) => {
+    if (!isAuthenticated()) {
+      e.preventDefault();
+      showLogin("Faca login para acessar a planilha.");
+      return;
+    }
+
+    if (!GOOGLE_SHEET_URL.startsWith("http")) {
+      e.preventDefault();
+      alert("Cole a URL da planilha em GOOGLE_SHEET_URL no script.js");
+    }
+  });
+
+  updateAuthUI();
+}
+
+function showLogin(message = "") {
+  document.getElementById("main-content").innerHTML = `
+    <h2>Login de acesso</h2>
+    <form id="login-form" class="login-box">
+      <p class="login-hint">Acesse para ver a aba de cadastrados e abrir a planilha.</p>
+      ${message ? `<p class="error">${escapeHtml(message)}</p>` : ""}
+      <label>Usuário:
+        <input type="text" name="usuario" autocomplete="username" required>
+      </label>
+      <label>Senha:
+        <input type="password" name="senha" autocomplete="current-password" required>
+      </label>
+      <button id="login-submit" type="submit">Entrar</button>
+      <p id="login-message" class="login-help">Credenciais padrao: admin / setor53</p>
+    </form>
+  `;
+
+  const loginForm = document.getElementById("login-form");
+  loginForm.onsubmit = handleLogin;
+}
+
+function handleLogin(e) {
+  e.preventDefault();
+  const form = e.target;
+  const usuario = String(form.usuario.value || "").trim();
+  const senha = String(form.senha.value || "").trim();
+
+  if (usuario === LOGIN_USER && senha === LOGIN_PASSWORD) {
+    setAuthenticated(true);
+    showCount();
     return;
   }
 
-  link.addEventListener("click", (e) => {
-    e.preventDefault();
-    alert("Cole a URL da planilha em GOOGLE_SHEET_URL no script.js");
-  });
+  const message = document.getElementById("login-message");
+  if (message) {
+    message.classList.remove("login-help");
+    message.classList.add("error");
+    message.textContent = "Usuario ou senha invalido.";
+  }
 }
 
 // Funções para alternar entre abas
@@ -96,6 +195,11 @@ function showForm() {
 }
 
 function showCount() {
+  if (!isAuthenticated()) {
+    showLogin("Faca login para acessar cadastrados.");
+    return;
+  }
+
   document.getElementById("main-content").innerHTML = `
         <h2>Cadastrados com informações da tabela</h2>
         <div id="count">Carregando...</div>
@@ -428,5 +532,7 @@ function fetchRegistered() {
 }
 
 // Inicializa na aba de cadastro
+setupAuthButton();
 setupSheetLink();
+updateAuthUI();
 showForm();
