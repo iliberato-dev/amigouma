@@ -1,6 +1,9 @@
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbxIwBH8lpOJ4n0hlTjh_Knib5mY8viOSTlfsSmHS7KyvdI8tog6e5skIz3Y5Jj1KzbpkA/exec";
 
+const GOOGLE_SHEET_URL =
+  "https://docs.google.com/spreadsheets/d/1uQKBF1ADRcwUdTy8ORg9xDDeURV4gTL10oCRVf1cBys/edit?gid=0#gid=0";
+
 // Requisição JSONP para contornar CORS no Google Apps Script.
 function jsonpRequest(url, params = {}) {
   return new Promise((resolve, reject) => {
@@ -37,6 +40,21 @@ function jsonpRequest(url, params = {}) {
 
     script.src = fullUrl;
     document.body.appendChild(script);
+  });
+}
+
+function setupSheetLink() {
+  const link = document.getElementById("sheet-link");
+  if (!link) return;
+
+  if (GOOGLE_SHEET_URL.startsWith("http")) {
+    link.href = GOOGLE_SHEET_URL;
+    return;
+  }
+
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    alert("Cole a URL da planilha em GOOGLE_SHEET_URL no script.js");
   });
 }
 
@@ -200,4 +218,5 @@ function fetchRegistered() {
 }
 
 // Inicializa na aba de cadastro
+setupSheetLink();
 showForm();
