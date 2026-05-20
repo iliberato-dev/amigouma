@@ -25,6 +25,66 @@ body {
   min-height: 100vh;
 }
 
+.brand-header {
+  width: min(92%, 680px);
+  margin: 1.2rem auto 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+}
+
+.logo-badge {
+  width: 66px;
+  height: 66px;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(150deg, #0ea5e9, #22c55e);
+  color: #fff;
+  box-shadow: 0 10px 25px rgba(14, 165, 233, 0.38);
+  position: relative;
+  font-family: "Baloo 2", cursive;
+}
+
+.logo-badge span {
+  font-size: 1.35rem;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.logo-badge small {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  font-size: 0.75rem;
+  line-height: 1;
+  font-weight: 700;
+  background: rgba(15, 23, 42, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  padding: 0.14rem 0.35rem;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.brand-text strong {
+  font-family: "Baloo 2", cursive;
+  font-size: clamp(1.05rem, 3.2vw, 1.55rem);
+  color: #0f172a;
+}
+
+.brand-text span {
+  font-size: 0.9rem;
+  color: #334155;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
 nav {
   background: transparent;
   color: var(--ink);
@@ -199,6 +259,10 @@ tbody tr:nth-child(even) {
 }
 
 @media (max-width: 900px) {
+  .brand-header {
+    width: min(94%, 760px);
+  }
+
   main {
     width: min(94%, 760px);
     margin: 1.25rem auto;
@@ -209,6 +273,17 @@ tbody tr:nth-child(even) {
 @media (max-width: 600px) {
   nav {
     justify-content: stretch;
+  }
+
+  .brand-header {
+    width: 95%;
+    margin-top: 1rem;
+  }
+
+  .logo-badge {
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
   }
 
   nav button {
