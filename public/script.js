@@ -79,7 +79,9 @@ function saveTransitionNames(rows) {
 function renderTransitionNames() {
   const names = getTransitionNames();
   const repeated = Array.from({ length: 36 }, (_, index) => {
-    const name = names[index % names.length];
+    const fullName = String(names[index % names.length] || "").trim();
+    const parts = fullName.split(/\s+/).filter(Boolean);
+    const name = parts.slice(0, 2).join(" ") || fullName;
     const xBase = (index * 37) % 100;
     const yBase = (index * 53) % 100;
     let x = Math.min(96, Math.max(4, xBase));
@@ -637,8 +639,9 @@ function escapeHtml(value) {
 
 function buildWhatsAppMessage(friendName) {
   const cleanName = String(friendName || "").trim();
-  if (cleanName) {
-    return `Ola, ${cleanName}! Tudo bem? Estou entrando em contato pelo cadastro do amigo UMA.`;
+  const firstName = cleanName.split(/\s+/).filter(Boolean)[0] || "";
+  if (firstName) {
+    return `Ola, ${firstName}! Tudo bem? Estou entrando em contato pelo cadastro do amigo UMA.`;
   }
   return "Ola! Tudo bem? Estou entrando em contato pelo cadastro do amigo UMA.";
 }
