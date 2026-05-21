@@ -94,6 +94,14 @@ body {
   white-space: nowrap;
 }
 
+.uma-name.recent-highlight {
+  font-weight: 800;
+  color: rgba(255, 255, 255, min(0.95, calc(var(--o, 0.22) + 0.18)));
+  text-shadow:
+    0 0 10px rgba(125, 211, 252, 0.55),
+    0 0 22px rgba(56, 189, 248, 0.35);
+}
+
 .uma-transition-center {
   position: relative;
   z-index: 2;

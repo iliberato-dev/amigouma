@@ -10,6 +10,7 @@ const WHATSAPP_LOGO_URL =
 
 const AUTH_STORAGE_KEY = "uma_auth_ok";
 const TRANSITION_NAMES_STORAGE_KEY = "uma_transition_names";
+const TRANSITION_RECENT_NAMES_STORAGE_KEY = "uma_transition_recent_names";
 // Tempo da tela AMIGO UMA em milissegundos.
 const TRANSITION_HOLD_MS = 4700;
 const TRANSITION_EXIT_MS = 520;
@@ -32,15 +33,44 @@ function getFirstAndSecondName(value) {
   return parts.slice(0, 2).join(" ");
 }
 
+function getRecentTransitionNames() {
+  try {
+    const cached = JSON.parse(
+      localStorage.getItem(TRANSITION_RECENT_NAMES_STORAGE_KEY) || "[]",
+    );
+    if (Array.isArray(cached)) {
+      return cached.map((name) => getFirstAndSecondName(name)).filter(Boolean);
+    }
+  } catch {
+    // Ignora cache inválido.
+  }
+
+  return [];
+}
+
+function saveRecentTransitionNames(names) {
+  try {
+    localStorage.setItem(
+      TRANSITION_RECENT_NAMES_STORAGE_KEY,
+      JSON.stringify(Array.from(new Set(names)).slice(0, 20)),
+    );
+  } catch {
+    // Se falhar no storage, segue sem cache.
+  }
+}
+
 function getTransitionNames() {
+  const recentNames = getRecentTransitionNames();
+
   if (Array.isArray(registeredRows) && registeredRows.length) {
-    return Array.from(
+    const baseNames = Array.from(
       new Set(
         registeredRows
           .map((row) => getFirstAndSecondName(row.nome_amigo))
           .filter((name) => name.length > 0),
       ),
     );
+    return Array.from(new Set([...recentNames, ...baseNames]));
   }
 
   try {
@@ -48,13 +78,16 @@ function getTransitionNames() {
       localStorage.getItem(TRANSITION_NAMES_STORAGE_KEY) || "[]",
     );
     if (Array.isArray(cached) && cached.length) {
-      return cached.map((name) => getFirstAndSecondName(name)).filter(Boolean);
+      const baseNames = cached
+        .map((name) => getFirstAndSecondName(name))
+        .filter(Boolean);
+      return Array.from(new Set([...recentNames, ...baseNames]));
     }
   } catch {
     // Ignora cache inválido.
   }
 
-  return [
+  const defaultNames = [
     "Samuel",
     "Rute",
     "Daniel",
@@ -66,6 +99,8 @@ function getTransitionNames() {
     "Mateus",
     "Ana",
   ];
+
+  return Array.from(new Set([...recentNames, ...defaultNames]));
 }
 
 function saveTransitionNames(rows) {
@@ -98,6 +133,12 @@ function addTransitionName(name) {
     }
   }
 
+  const recentNames = getRecentTransitionNames().filter(
+    (item) => item !== trimmedName,
+  );
+  recentNames.unshift(trimmedName);
+  saveRecentTransitionNames(recentNames);
+
   try {
     const cached = JSON.parse(
       localStorage.getItem(TRANSITION_NAMES_STORAGE_KEY) || "[]",
@@ -120,24 +161,56 @@ function addTransitionName(name) {
 
 function renderTransitionNames() {
   const names = getTransitionNames();
+  const recentPriority = getRecentTransitionNames().slice(0, 3);
+  const recentSet = new Set(recentPriority);
+  const highlightedOnce = new Set();
+  const recentPositions = [
+    { x: 16, y: 22, rotate: -8 },
+    { x: 84, y: 28, rotate: 7 },
+    { x: 22, y: 78, rotate: -6 },
+  ];
+  const recentPositionMap = new Map(
+    recentPriority.map((name, idx) => [name, recentPositions[idx]]),
+  );
+
   const repeated = Array.from({ length: 36 }, (_, index) => {
     const name = getFirstAndSecondName(names[index % names.length]);
+    const isRecentHighlight = recentSet.has(name) && !highlightedOnce.has(name);
+    if (isRecentHighlight) {
+      highlightedOnce.add(name);
+    }
+
     const xBase = (index * 37) % 100;
     const yBase = (index * 53) % 100;
     let x = Math.min(96, Math.max(4, xBase));
     let y = Math.min(95, Math.max(6, yBase));
+    let rotate = ((index % 7) - 3) * 2;
+
+    if (isRecentHighlight) {
+      const fixedPos = recentPositionMap.get(name);
+      if (fixedPos) {
+        x = fixedPos.x;
+        y = fixedPos.y;
+        rotate = fixedPos.rotate;
+      }
+    }
 
     // Evita muitos nomes no centro para manter o AMIGO UMA legível.
     if (x > 35 && x < 65 && y > 34 && y < 66) {
       y = y < 50 ? y - 18 : y + 18;
     }
 
-    const size = (0.78 + ((index * 19) % 100) / 100).toFixed(2);
-    const opacity = (0.16 + ((index * 11) % 65) / 100).toFixed(2);
-    const delay = index * 85;
-    const rotate = ((index % 7) - 3) * 2;
+    const sizeBase = 0.78 + ((index * 19) % 100) / 100;
+    const opacityBase = 0.16 + ((index * 11) % 65) / 100;
+    const size = (isRecentHighlight ? sizeBase + 0.4 : sizeBase).toFixed(2);
+    const opacity = Math.min(
+      0.9,
+      isRecentHighlight ? opacityBase + 0.28 : opacityBase,
+    ).toFixed(2);
+    const delay = isRecentHighlight ? index * 40 : index * 85;
+    const highlightClass = isRecentHighlight ? " recent-highlight" : "";
 
-    return `<span class="uma-name" style="--n:${index};--x:${x}%;--y:${y}%;--s:${size}rem;--o:${opacity};--d:${delay}ms;--r:${rotate}deg">${escapeHtml(name)}</span>`;
+    return `<span class="uma-name${highlightClass}" style="--n:${index};--x:${x}%;--y:${y}%;--s:${size}rem;--o:${opacity};--d:${delay}ms;--r:${rotate}deg">${escapeHtml(name)}</span>`;
   });
 
   return repeated.join("");
