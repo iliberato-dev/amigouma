@@ -18,6 +18,61 @@ const TRANSITION_EXIT_MS = 520;
 const SHOW_TRANSITION_ON_BOOT = true;
 const LOGIN_USER = "admin";
 const LOGIN_PASSWORD = "setor53";
+const CONGREGACAO_OUTRA_VALUE = "__OTHER__";
+const ENDERECO_SUGGESTIONS_URL = "https://nominatim.openstreetmap.org/search";
+const ENDERECO_SUGGESTIONS_LIMIT = 5;
+const ENDERECO_CIDADE_ALVO = "Sao Paulo";
+const ENDERECO_ESTADO_ALVO = "Sao Paulo";
+const SAO_PAULO_CITY_VIEWBOX = {
+  left: -46.826,
+  top: -23.356,
+  right: -46.365,
+  bottom: -23.824,
+};
+
+const CONGREGACOES = [
+  "Sede",
+  "Cidade Kemel",
+  "Encosta Norte",
+  "Fazenda Itaim",
+  "Jd. Camargo Novo – Baixo",
+  "Jd. Camargo Novo – Cima",
+  "Jardim Campos",
+  "Jardim Célia",
+  "Jardim da Estação",
+  "Jardim das Oliveiras",
+  "Jardim Gióia",
+  "Jardim Laura",
+  "Jardim Lourdes",
+  "Jardim Mabel",
+  "Jardim Miliúnas",
+  "Jardim Miraí",
+  "Jardim Miriam",
+  "Jardim Nélia",
+  "Jardim Nélia II",
+  "Jardim Noêmia",
+  "Jardim Romano",
+  "Jardim Santa Margarida",
+  "Jardim São Luís",
+  "Kemel Addas",
+  "Km 29",
+  "Parque das Águas",
+  "Parque Santa Amélia",
+  "Parque Veredas",
+  "Riacho Carioca",
+  "Santana do Agreste",
+  "Texima",
+  "Tijuco Preto",
+  "Vila Alabama",
+  "Vila Aymoré",
+  "Vila Itaim",
+  "Vila Jurema",
+  "Vila Melo",
+  "Vila Nova Itaim",
+  "Vila Popular",
+  "Vila Seabra",
+  "Vila Sonia",
+];
 
 let registeredRows = [];
 let filteredRows = [];
@@ -472,6 +527,14 @@ function showForm(options = {}) {
     return;
   }
 
+  const congregacaoOptions = [...CONGREGACOES]
+    .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))
+    .map(
+      (congregacao) =>
+        `<option value="${escapeHtml(congregacao)}">${escapeHtml(congregacao)}</option>`,
+    )
+    .join("");
+
   document.getElementById("main-content").innerHTML = `
         <h2>Cadastro UMA</h2>
         <form id="cadastroForm">
@@ -479,7 +542,14 @@ function showForm(options = {}) {
                 <input type="text" name="nome_cadastrante" required>
             </label>
             <label>Congregação:
-                <input type="text" name="congregacao" required>
+          <select name="congregacao" required>
+            <option value="">Selecione a congregação</option>
+            ${congregacaoOptions}
+            <option value="${CONGREGACAO_OUTRA_VALUE}">Outra (digitar)</option>
+          </select>
+            </label>
+            <label id="congregacao-outra-wrap" class="hidden">Congregação (outra):
+                <input type="text" name="congregacao_outra" disabled>
             </label>
             <label>Nome do amigo UMA:
                 <input type="text" name="nome_amigo" required>
@@ -488,7 +558,11 @@ function showForm(options = {}) {
                 <input type="tel" name="telefone" maxlength="15" placeholder="(99) 99999-9999" required>
             </label>
             <label>Endereço do amigo UMA:
+              <div class="address-autocomplete-wrap">
                 <textarea name="endereco" maxlength="180" required></textarea>
+                <div id="endereco-status" class="address-status hidden" aria-live="polite"></div>
+                <ul id="endereco-suggestions" class="address-suggestions hidden" role="listbox" aria-label="Sugestoes de endereco"></ul>
+              </div>
             </label>
             <button id="submit-button" type="submit">Cadastrar</button>
             <div id="form-message"></div>
@@ -497,8 +571,323 @@ function showForm(options = {}) {
   const form = document.getElementById("cadastroForm");
   form.onsubmit = enviarCadastro;
 
+  const congregacaoSelect = form.congregacao;
+  const congregacaoOutraWrap = document.getElementById(
+    "congregacao-outra-wrap",
+  );
+  const congregacaoOutraInput = form.congregacao_outra;
+
+  function toggleCongregacaoOutra() {
+    const isOutra = congregacaoSelect.value === CONGREGACAO_OUTRA_VALUE;
+    congregacaoOutraWrap.classList.toggle("hidden", !isOutra);
+    congregacaoOutraInput.disabled = !isOutra;
+    congregacaoOutraInput.required = isOutra;
+
+    if (isOutra) {
+      requestAnimationFrame(() => {
+        congregacaoOutraInput.focus();
+      });
+    }
+
+    if (!isOutra) {
+      congregacaoOutraInput.value = "";
+    }
+  }
+
+  congregacaoSelect.addEventListener("change", toggleCongregacaoOutra);
+  toggleCongregacaoOutra();
+
   form.telefone.addEventListener("input", (event) => {
     event.target.value = formatPhone(event.target.value);
+  });
+
+  setupEnderecoAutocomplete(form);
+}
+
+function formatEnderecoSuggestion(displayName) {
+  const parts = String(displayName || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return parts.slice(0, 4).join(", ");
+}
+
+function extractHouseNumberFromQuery(query) {
+  const text = String(query || "").trim();
+  const match = text.match(/(?:,|\s)(\d{1,6}[a-zA-Z]?)\s*$/);
+  return match ? match[1] : "";
+}
+
+function buildEnderecoSuggestionLabel(item, fallbackHouseNumber = "") {
+  const address = item && item.address ? item.address : {};
+  const houseNumber = String(address.house_number || "").trim();
+  const effectiveHouseNumber =
+    houseNumber || String(fallbackHouseNumber || "").trim();
+  const road = String(address.road || address.pedestrian || "").trim();
+  const suburb = String(address.suburb || address.neighbourhood || "").trim();
+  const city = String(
+    address.city || address.town || address.municipality || "",
+  ).trim();
+  const stateCode = String(address.state_code || "SP").trim();
+
+  if (road) {
+    const firstPart = effectiveHouseNumber
+      ? `${road}, ${effectiveHouseNumber}`
+      : road;
+    const parts = [firstPart];
+    if (suburb) parts.push(suburb);
+    if (city) parts.push(city);
+    if (stateCode) parts.push(stateCode);
+    return parts.join(" - ");
+  }
+
+  return formatEnderecoSuggestion(item && item.display_name);
+}
+
+function normalizeTextNoAccents(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function isEnderecoFromSaoPaulo(item) {
+  const address = item && item.address ? item.address : {};
+  const state = normalizeTextNoAccents(address.state);
+  const cityCandidates = [
+    address.city,
+    address.town,
+    address.municipality,
+    address.village,
+    address.county,
+  ].map(normalizeTextNoAccents);
+
+  return (
+    state === normalizeTextNoAccents(ENDERECO_ESTADO_ALVO) &&
+    cityCandidates.includes(normalizeTextNoAccents(ENDERECO_CIDADE_ALVO))
+  );
+}
+
+function setupEnderecoAutocomplete(form) {
+  const enderecoInput = form.endereco;
+  const suggestionsList = document.getElementById("endereco-suggestions");
+  const statusNode = document.getElementById("endereco-status");
+
+  if (!enderecoInput || !suggestionsList || !statusNode) return;
+
+  let debounceId;
+  let requestController;
+  let currentSuggestions = [];
+  let activeIndex = -1;
+  let requestToken = 0;
+
+  function setStatus(message) {
+    statusNode.textContent = message;
+    statusNode.classList.toggle("hidden", !message);
+  }
+
+  function closeSuggestions() {
+    currentSuggestions = [];
+    activeIndex = -1;
+    suggestionsList.innerHTML = "";
+    suggestionsList.classList.add("hidden");
+    setStatus("");
+  }
+
+  function renderSuggestions() {
+    if (!currentSuggestions.length) {
+      suggestionsList.innerHTML = "";
+      suggestionsList.classList.add("hidden");
+      return;
+    }
+
+    suggestionsList.innerHTML = currentSuggestions
+      .map((suggestion, index) => {
+        const isActive = index === activeIndex;
+        return `
+          <li>
+            <button
+              id="endereco-suggestion-${index}"
+              type="button"
+              class="address-suggestion-btn${isActive ? " active" : ""}"
+              data-index="${index}"
+              role="option"
+              aria-selected="${isActive ? "true" : "false"}"
+            >
+              ${escapeHtml(suggestion.label)}
+            </button>
+          </li>
+        `;
+      })
+      .join("");
+
+    suggestionsList.classList.remove("hidden");
+  }
+
+  function applySuggestion(index) {
+    const selected = currentSuggestions[index];
+    if (!selected) return;
+
+    enderecoInput.value = selected.label.slice(0, 180);
+    closeSuggestions();
+    enderecoInput.focus();
+  }
+
+  function updateActiveSuggestion(nextIndex) {
+    if (!currentSuggestions.length) return;
+    activeIndex = nextIndex;
+    renderSuggestions();
+
+    const activeNode = suggestionsList.querySelector(
+      `#endereco-suggestion-${activeIndex}`,
+    );
+    if (activeNode) {
+      activeNode.scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  async function searchAddressSuggestions(query) {
+    const typedHouseNumber = extractHouseNumberFromQuery(query);
+
+    requestToken += 1;
+    const currentToken = requestToken;
+
+    if (requestController) {
+      requestController.abort();
+    }
+    requestController = new AbortController();
+
+    setStatus("Buscando sugestoes de endereco...");
+
+    try {
+      const queryParams = new URLSearchParams({
+        q: `${query}, Sao Paulo, SP, Brasil`,
+        format: "jsonv2",
+        addressdetails: "1",
+        countrycodes: "br",
+        bounded: "1",
+        viewbox: `${SAO_PAULO_CITY_VIEWBOX.left},${SAO_PAULO_CITY_VIEWBOX.top},${SAO_PAULO_CITY_VIEWBOX.right},${SAO_PAULO_CITY_VIEWBOX.bottom}`,
+        limit: String(ENDERECO_SUGGESTIONS_LIMIT),
+      });
+
+      const response = await fetch(
+        `${ENDERECO_SUGGESTIONS_URL}?${queryParams.toString()}`,
+        {
+          signal: requestController.signal,
+          headers: {
+            Accept: "application/json",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP_${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (currentToken !== requestToken) {
+        return;
+      }
+
+      const suggestions = Array.isArray(data)
+        ? data
+            .filter(isEnderecoFromSaoPaulo)
+            .map((item) => buildEnderecoSuggestionLabel(item, typedHouseNumber))
+            .filter((item) => item.length > 0)
+        : [];
+
+      currentSuggestions = Array.from(new Set(suggestions))
+        .slice(0, ENDERECO_SUGGESTIONS_LIMIT)
+        .map((label) => ({ label }));
+
+      activeIndex = -1;
+      renderSuggestions();
+
+      if (!currentSuggestions.length) {
+        setStatus("Nenhuma sugestao encontrada.");
+      } else {
+        setStatus("");
+      }
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        return;
+      }
+      closeSuggestions();
+      setStatus("Nao foi possivel buscar sugestoes agora.");
+    }
+  }
+
+  enderecoInput.addEventListener("input", () => {
+    const query = String(enderecoInput.value || "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    clearTimeout(debounceId);
+
+    if (query.length < 4) {
+      closeSuggestions();
+      return;
+    }
+
+    debounceId = setTimeout(() => {
+      searchAddressSuggestions(query);
+    }, 350);
+  });
+
+  enderecoInput.addEventListener("keydown", (event) => {
+    if (!currentSuggestions.length) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      const next = (activeIndex + 1) % currentSuggestions.length;
+      updateActiveSuggestion(next);
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const next =
+        activeIndex <= 0 ? currentSuggestions.length - 1 : activeIndex - 1;
+      updateActiveSuggestion(next);
+      return;
+    }
+
+    if (event.key === "Enter" && activeIndex >= 0) {
+      event.preventDefault();
+      applySuggestion(activeIndex);
+      return;
+    }
+
+    if (event.key === "Escape") {
+      closeSuggestions();
+    }
+  });
+
+  suggestionsList.addEventListener("mousedown", (event) => {
+    // Evita blur do textarea antes de processar o clique.
+    event.preventDefault();
+  });
+
+  suggestionsList.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-index]");
+    if (!button) return;
+
+    const index = Number(button.dataset.index);
+    if (Number.isNaN(index)) return;
+    applySuggestion(index);
+  });
+
+  enderecoInput.addEventListener("blur", () => {
+    setTimeout(() => {
+      closeSuggestions();
+    }, 120);
+  });
+
+  form.addEventListener("reset", () => {
+    closeSuggestions();
   });
 }
 
@@ -725,15 +1114,24 @@ function enviarCadastro(e) {
 
   const rawData = {
     nome_cadastrante: form.nome_cadastrante.value.trim(),
-    congregacao: form.congregacao.value.trim(),
+    congregacao:
+      form.congregacao.value === CONGREGACAO_OUTRA_VALUE
+        ? String(form.congregacao_outra.value || "").trim()
+        : form.congregacao.value.trim(),
     nome_amigo: form.nome_amigo.value.trim(),
     telefone: form.telefone.value.trim(),
     endereco: form.endereco.value.trim(),
   };
 
   const data = normalizeFormData(rawData);
-  form.congregacao.value = data.congregacao;
   form.telefone.value = data.telefone;
+
+  if (
+    form.congregacao.value === CONGREGACAO_OUTRA_VALUE &&
+    form.congregacao_outra
+  ) {
+    form.congregacao_outra.value = data.congregacao;
+  }
 
   const validationError = validateFormData(data);
   if (validationError) {
