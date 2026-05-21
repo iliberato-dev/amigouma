@@ -12,6 +12,7 @@ let registeredRows = [];
 let filteredRows = [];
 let currentPage = 1;
 const PAGE_SIZE = 10;
+let toastHideTimer;
 
 function isAuthenticated() {
   return localStorage.getItem(AUTH_STORAGE_KEY) === "1";
@@ -362,6 +363,53 @@ function showFormMessage(type, text) {
   `;
 
   messageNode.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  showToast(cssType, text);
+}
+
+function ensureToastRoot() {
+  let toastRoot = document.getElementById("toast-root");
+  if (!toastRoot) {
+    toastRoot = document.createElement("div");
+    toastRoot.id = "toast-root";
+    toastRoot.className = "toast-root";
+    document.body.appendChild(toastRoot);
+  }
+  return toastRoot;
+}
+
+function showToast(type, text) {
+  const toastRoot = ensureToastRoot();
+  const cssType = type === "success" ? "success" : "error";
+  const icon = cssType === "success" ? "✓" : "!";
+  const safeText = escapeHtml(text);
+
+  toastRoot.innerHTML = `
+    <div class="toast ${cssType}" role="status" aria-live="polite">
+      <span class="toast-icon" aria-hidden="true">${icon}</span>
+      <span class="toast-text">${safeText}</span>
+      <button class="toast-close" type="button" aria-label="Fechar aviso">×</button>
+    </div>
+  `;
+
+  const toastNode = toastRoot.querySelector(".toast");
+  const closeButton = toastRoot.querySelector(".toast-close");
+
+  const closeToast = () => {
+    if (!toastNode) return;
+    toastNode.classList.add("hide");
+    setTimeout(() => {
+      if (toastRoot) {
+        toastRoot.innerHTML = "";
+      }
+    }, 220);
+  };
+
+  if (closeButton) {
+    closeButton.addEventListener("click", closeToast);
+  }
+
+  clearTimeout(toastHideTimer);
+  toastHideTimer = setTimeout(closeToast, 3500);
 }
 
 // Função para enviar cadastro para Google Sheets
