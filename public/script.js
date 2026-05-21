@@ -346,6 +346,24 @@ function validateFormData(data) {
   return "";
 }
 
+function showFormMessage(type, text) {
+  const messageNode = document.getElementById("form-message");
+  if (!messageNode) return;
+
+  const safeText = escapeHtml(text);
+  const cssType = type === "success" ? "success" : "error";
+  const icon = cssType === "success" ? "✓" : "!";
+
+  messageNode.innerHTML = `
+    <div class="form-feedback ${cssType}" role="alert" aria-live="assertive">
+      <span class="feedback-icon" aria-hidden="true">${icon}</span>
+      <span class="feedback-text">${safeText}</span>
+    </div>
+  `;
+
+  messageNode.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
 // Função para enviar cadastro para Google Sheets
 function enviarCadastro(e) {
   e.preventDefault();
@@ -370,8 +388,7 @@ function enviarCadastro(e) {
 
   const validationError = validateFormData(data);
   if (validationError) {
-    document.getElementById("form-message").innerHTML =
-      `<span class="error">${validationError}</span>`;
+    showFormMessage("error", validationError);
     return;
   }
 
@@ -394,26 +411,27 @@ function enviarCadastro(e) {
     })
     .then((resp) => {
       if (resp.result === "success") {
-        document.getElementById("form-message").innerHTML =
-          '<span class="success">Cadastro realizado com sucesso!</span>';
+        showFormMessage("success", "Cadastro realizado com sucesso!");
         form.reset();
       } else if (resp.result === "duplicate") {
-        document.getElementById("form-message").innerHTML =
-          '<span class="error">Cadastro ja existente para este amigo, telefone e congregacao.</span>';
+        showFormMessage(
+          "error",
+          "Cadastro ja existente para este amigo, telefone e congregacao.",
+        );
       } else {
-        document.getElementById("form-message").innerHTML =
-          '<span class="error">Erro ao cadastrar. Tente novamente.</span>';
+        showFormMessage("error", "Erro ao cadastrar. Tente novamente.");
       }
     })
     .catch((error) => {
       if (String(error && error.message) === "DUPLICATE_RECORD") {
-        document.getElementById("form-message").innerHTML =
-          '<span class="error">Cadastro ja existente para este amigo, telefone e congregacao.</span>';
+        showFormMessage(
+          "error",
+          "Cadastro ja existente para este amigo, telefone e congregacao.",
+        );
         return;
       }
 
-      document.getElementById("form-message").innerHTML =
-        `<span class="error">${escapeHtml(getFriendlyApiError(error))}</span>`;
+      showFormMessage("error", getFriendlyApiError(error));
     })
     .finally(() => {
       submitButton.disabled = false;
