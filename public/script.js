@@ -24,12 +24,20 @@ const PAGE_SIZE = 10;
 let toastHideTimer;
 let isScreenTransitionRunning = false;
 
+function getFirstAndSecondName(value) {
+  const parts = String(value || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return parts.slice(0, 2).join(" ");
+}
+
 function getTransitionNames() {
   if (Array.isArray(registeredRows) && registeredRows.length) {
     return Array.from(
       new Set(
         registeredRows
-          .map((row) => String(row.nome_amigo || "").trim())
+          .map((row) => getFirstAndSecondName(row.nome_amigo))
           .filter((name) => name.length > 0),
       ),
     );
@@ -40,7 +48,7 @@ function getTransitionNames() {
       localStorage.getItem(TRANSITION_NAMES_STORAGE_KEY) || "[]",
     );
     if (Array.isArray(cached) && cached.length) {
-      return cached.map((name) => String(name || "").trim()).filter(Boolean);
+      return cached.map((name) => getFirstAndSecondName(name)).filter(Boolean);
     }
   } catch {
     // Ignora cache inválido.
@@ -65,7 +73,7 @@ function saveTransitionNames(rows) {
     const names = Array.from(
       new Set(
         rows
-          .map((row) => String(row.nome_amigo || "").trim())
+          .map((row) => getFirstAndSecondName(row.nome_amigo))
           .filter((name) => name.length > 0),
       ),
     ).slice(0, 80);
@@ -79,9 +87,7 @@ function saveTransitionNames(rows) {
 function renderTransitionNames() {
   const names = getTransitionNames();
   const repeated = Array.from({ length: 36 }, (_, index) => {
-    const fullName = String(names[index % names.length] || "").trim();
-    const parts = fullName.split(/\s+/).filter(Boolean);
-    const name = parts.slice(0, 2).join(" ") || fullName;
+    const name = getFirstAndSecondName(names[index % names.length]);
     const xBase = (index * 37) % 100;
     const yBase = (index * 53) % 100;
     let x = Math.min(96, Math.max(4, xBase));
