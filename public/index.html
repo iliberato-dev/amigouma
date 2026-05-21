@@ -10,7 +10,11 @@
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="shortcut icon" href="https://storage.googleapis.com/ecdt-logos/62769500000140/igreja_evangelica_assembleia_de_deus_em_sao_paulo_62769500.webp" type="image/x-icon">
+    <link
+      rel="shortcut icon"
+      href="https://storage.googleapis.com/ecdt-logos/62769500000140/igreja_evangelica_assembleia_de_deus_em_sao_paulo_62769500.webp"
+      type="image/x-icon"
+    />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -31,6 +35,24 @@
       <button onclick="showForm()">Cadastro</button>
       <button onclick="showCount()">Cadastrados</button>
       <button id="auth-button" type="button">Entrar</button>
+      <label
+        class="nav-toggle"
+        for="transition-toggle"
+        title="Ativar ou retirar a animação"
+      >
+        <span class="nav-toggle-label">Fx</span>
+        <span class="nav-switch">
+          <input
+            id="transition-toggle"
+            type="checkbox"
+            role="switch"
+            aria-label="Ativar animação"
+          />
+          <span class="nav-switch-track" aria-hidden="true">
+            <span class="nav-switch-thumb"></span>
+          </span>
+        </span>
+      </label>
       <a
         id="sheet-link"
         class="nav-link"

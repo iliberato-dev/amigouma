@@ -11,6 +11,7 @@ const WHATSAPP_LOGO_URL =
 const AUTH_STORAGE_KEY = "uma_auth_ok";
 const TRANSITION_NAMES_STORAGE_KEY = "uma_transition_names";
 const TRANSITION_RECENT_NAMES_STORAGE_KEY = "uma_transition_recent_names";
+const TRANSITION_ENABLED_STORAGE_KEY = "uma_transition_enabled";
 // Tempo da tela AMIGO UMA em milissegundos.
 const TRANSITION_HOLD_MS = 4700;
 const TRANSITION_EXIT_MS = 520;
@@ -24,6 +25,48 @@ let currentPage = 1;
 const PAGE_SIZE = 10;
 let toastHideTimer;
 let isScreenTransitionRunning = false;
+
+function prefersReducedMotion() {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+function isTransitionEnabled() {
+  const stored = localStorage.getItem(TRANSITION_ENABLED_STORAGE_KEY);
+  if (stored === null) {
+    return !prefersReducedMotion();
+  }
+  return stored === "1";
+}
+
+function setTransitionEnabled(value) {
+  if (value) {
+    localStorage.setItem(TRANSITION_ENABLED_STORAGE_KEY, "1");
+  } else {
+    localStorage.setItem(TRANSITION_ENABLED_STORAGE_KEY, "0");
+  }
+  updateTransitionToggleUI();
+}
+
+function updateTransitionToggleUI() {
+  const toggle = document.getElementById("transition-toggle");
+  if (!toggle) return;
+  toggle.checked = isTransitionEnabled();
+}
+
+function setupTransitionToggle() {
+  const toggle = document.getElementById("transition-toggle");
+  if (!toggle) return;
+
+  toggle.addEventListener("change", () => {
+    setTransitionEnabled(toggle.checked);
+  });
+
+  updateTransitionToggleUI();
+}
 
 function getFirstAndSecondName(value) {
   const parts = String(value || "")
@@ -218,6 +261,10 @@ function renderTransitionNames() {
 
 function runScreenTransition(nextRender) {
   if (typeof nextRender !== "function") return;
+  if (!isTransitionEnabled()) {
+    nextRender();
+    return;
+  }
   if (isScreenTransitionRunning) {
     nextRender();
     return;
@@ -1014,6 +1061,7 @@ if (
 }
 
 setupAuthButton();
+setupTransitionToggle();
 setupSheetLink();
 updateAuthUI();
 
