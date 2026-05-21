@@ -25,6 +25,102 @@ body {
   min-height: 100vh;
 }
 
+.uma-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  opacity: 0;
+  transform: scale(1.03);
+  transition:
+    opacity 0.28s ease,
+    transform 0.38s ease;
+}
+
+.uma-transition-overlay.is-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.uma-transition-overlay.is-leaving {
+  opacity: 0;
+  transform: scale(1.02);
+}
+
+.uma-transition-bg-layer {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 20% 25%,
+      rgba(56, 189, 248, 0.45),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 80% 18%,
+      rgba(34, 197, 94, 0.42),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at 50% 80%,
+      rgba(250, 204, 21, 0.3),
+      transparent 35%
+    ),
+    linear-gradient(155deg, #03142d, #062845 45%, #0b2f4f);
+}
+
+.uma-transition-names {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: clamp(1rem, 2vw, 2rem);
+  align-content: center;
+}
+
+.uma-name {
+  color: rgba(255, 255, 255, 0.22);
+  font-family: "Baloo 2", cursive;
+  font-size: clamp(0.9rem, 2.2vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: 0.35px;
+  text-align: center;
+  animation: driftNames 2.8s ease-in-out infinite;
+  animation-delay: calc(var(--n, 0) * 45ms);
+}
+
+.uma-transition-center {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 0.8rem 1.2rem;
+}
+
+.uma-transition-center h1 {
+  margin: 0;
+  color: #ffffff;
+  font-family: "Baloo 2", cursive;
+  font-size: clamp(2.2rem, 8.5vw, 5rem);
+  letter-spacing: 1.5px;
+  text-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.35),
+    0 0 24px rgba(56, 189, 248, 0.45);
+  animation: pulseTitle 0.95s ease-in-out infinite alternate;
+}
+
+.uma-transition-sub {
+  margin: 0 0 0.3rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-family: "Nunito", sans-serif;
+  font-size: clamp(0.95rem, 2.8vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+}
+
 .brand-header {
   width: min(92%, 680px);
   margin: 1.2rem auto 0.25rem;
@@ -807,6 +903,36 @@ tbody tr:nth-child(even) {
   }
 }
 
+@keyframes driftNames {
+  0% {
+    opacity: 0.4;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  50% {
+    opacity: 0.95;
+    transform: translateY(0) scale(1.03);
+    color: rgba(255, 255, 255, 0.56);
+  }
+
+  100% {
+    opacity: 0.45;
+    transform: translateY(-10px) scale(0.98);
+  }
+}
+
+@keyframes pulseTitle {
+  from {
+    transform: scale(0.985);
+    letter-spacing: 1.2px;
+  }
+
+  to {
+    transform: scale(1.02);
+    letter-spacing: 2px;
+  }
+}
+
 @media (max-width: 900px) {
   .brand-header {
     width: min(94%, 760px);
@@ -880,5 +1006,9 @@ tbody tr:nth-child(even) {
 
   .toast-text {
     font-size: 0.95rem;
+  }
+
+  .uma-transition-names {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

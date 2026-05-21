@@ -5,9 +5,15 @@ const GOOGLE_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1uQKBF1ADRcwUdTy8ORg9xDDeURV4gTL10oCRVf1cBys/edit?gid=0#gid=0";
 
 // Cole aqui a URL do logo do WhatsApp que voce quiser usar nos cards.
-const WHATSAPP_LOGO_URL = "https://cdn-icons-png.flaticon.com/256/2111/2111728.png";
+const WHATSAPP_LOGO_URL =
+  "https://cdn-icons-png.flaticon.com/256/2111/2111728.png";
 
 const AUTH_STORAGE_KEY = "uma_auth_ok";
+const TRANSITION_NAMES_STORAGE_KEY = "uma_transition_names";
+// Tempo da tela AMIGO UMA em milissegundos.
+const TRANSITION_HOLD_MS = 4700;
+const TRANSITION_EXIT_MS = 520;
+const SHOW_TRANSITION_ON_BOOT = true;
 const LOGIN_USER = "admin";
 const LOGIN_PASSWORD = "setor53";
 
@@ -16,6 +22,104 @@ let filteredRows = [];
 let currentPage = 1;
 const PAGE_SIZE = 10;
 let toastHideTimer;
+let isScreenTransitionRunning = false;
+
+function getTransitionNames() {
+  if (Array.isArray(registeredRows) && registeredRows.length) {
+    return Array.from(
+      new Set(
+        registeredRows
+          .map((row) => String(row.nome_amigo || "").trim())
+          .filter((name) => name.length > 0),
+      ),
+    );
+  }
+
+  try {
+    const cached = JSON.parse(
+      localStorage.getItem(TRANSITION_NAMES_STORAGE_KEY) || "[]",
+    );
+    if (Array.isArray(cached) && cached.length) {
+      return cached.map((name) => String(name || "").trim()).filter(Boolean);
+    }
+  } catch {
+    // Ignora cache inválido.
+  }
+
+  return [
+    "Samuel",
+    "Rute",
+    "Daniel",
+    "Ester",
+    "Lucas",
+    "Noemi",
+    "Pedro",
+    "Debora",
+    "Mateus",
+    "Ana",
+  ];
+}
+
+function saveTransitionNames(rows) {
+  try {
+    const names = Array.from(
+      new Set(
+        rows
+          .map((row) => String(row.nome_amigo || "").trim())
+          .filter((name) => name.length > 0),
+      ),
+    ).slice(0, 80);
+
+    localStorage.setItem(TRANSITION_NAMES_STORAGE_KEY, JSON.stringify(names));
+  } catch {
+    // Se falhar no storage, segue sem cache.
+  }
+}
+
+function renderTransitionNames() {
+  const names = getTransitionNames();
+  const repeated = Array.from({ length: 36 }, (_, index) => {
+    const name = names[index % names.length];
+    return `<span class="uma-name" style="--n:${index}">${escapeHtml(name)}</span>`;
+  });
+
+  return repeated.join("");
+}
+
+function runScreenTransition(nextRender) {
+  if (typeof nextRender !== "function") return;
+  if (isScreenTransitionRunning) {
+    nextRender();
+    return;
+  }
+
+  isScreenTransitionRunning = true;
+
+  const overlay = document.createElement("div");
+  overlay.className = "uma-transition-overlay";
+  overlay.innerHTML = `
+    <div class="uma-transition-bg-layer" aria-hidden="true"></div>
+    <div class="uma-transition-names" aria-hidden="true">${renderTransitionNames()}</div>
+    <div class="uma-transition-center">
+      <p class="uma-transition-sub">Conectando amigos...</p>
+      <h1>AMIGO UMA</h1>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => {
+    overlay.classList.add("is-visible");
+  });
+
+  setTimeout(() => {
+    nextRender();
+    overlay.classList.add("is-leaving");
+    setTimeout(() => {
+      overlay.remove();
+      isScreenTransitionRunning = false;
+    }, TRANSITION_EXIT_MS);
+  }, TRANSITION_HOLD_MS);
+}
 
 function isAuthenticated() {
   return localStorage.getItem(AUTH_STORAGE_KEY) === "1";
@@ -125,7 +229,12 @@ function setupSheetLink() {
   updateAuthUI();
 }
 
-function showLogin(message = "") {
+function showLogin(message = "", options = {}) {
+  if (!options.skipTransition) {
+    runScreenTransition(() => showLogin(message, { skipTransition: true }));
+    return;
+  }
+
   document.getElementById("main-content").innerHTML = `
     <h2>Login de acesso</h2>
     <form id="login-form" class="login-box">
@@ -180,7 +289,12 @@ function handleLogin(e) {
 }
 
 // Funções para alternar entre abas
-function showForm() {
+function showForm(options = {}) {
+  if (!options.skipTransition) {
+    runScreenTransition(() => showForm({ skipTransition: true }));
+    return;
+  }
+
   document.getElementById("main-content").innerHTML = `
         <h2>Cadastro UMA</h2>
         <form id="cadastroForm">
@@ -211,9 +325,16 @@ function showForm() {
   });
 }
 
-function showCount() {
+function showCount(options = {}) {
+  if (!options.skipTransition) {
+    runScreenTransition(() => showCount({ skipTransition: true }));
+    return;
+  }
+
   if (!isAuthenticated()) {
-    showLogin("Login expirado. Entre novamente para acessar cadastrados.");
+    showLogin("Login expirado. Entre novamente para acessar cadastrados.", {
+      skipTransition: true,
+    });
     return;
   }
 
@@ -520,7 +641,10 @@ function renderWhatsAppPhone(phoneText, friendName) {
 
   if (digits.length === 10 || digits.length === 11) {
     waDigits = `55${digits}`;
-  } else if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) {
+  } else if (
+    (digits.length === 12 || digits.length === 13) &&
+    digits.startsWith("55")
+  ) {
     waDigits = digits;
   }
 
@@ -722,6 +846,7 @@ function fetchRegistered() {
 
       if (Array.isArray(data.rows)) {
         registeredRows = data.rows;
+        saveTransitionNames(registeredRows);
         setupTableFilters(registeredRows);
         applyTableFilters();
         return;
@@ -759,4 +884,9 @@ if (
 setupAuthButton();
 setupSheetLink();
 updateAuthUI();
-showForm();
+
+if (SHOW_TRANSITION_ON_BOOT) {
+  runScreenTransition(() => showForm({ skipTransition: true }));
+} else {
+  showForm();
+}
