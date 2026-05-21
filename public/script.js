@@ -14,14 +14,14 @@ let currentPage = 1;
 const PAGE_SIZE = 10;
 
 function isAuthenticated() {
-  return sessionStorage.getItem(AUTH_STORAGE_KEY) === "1";
+  return localStorage.getItem(AUTH_STORAGE_KEY) === "1";
 }
 
 function setAuthenticated(value) {
   if (value) {
-    sessionStorage.setItem(AUTH_STORAGE_KEY, "1");
+    localStorage.setItem(AUTH_STORAGE_KEY, "1");
   } else {
-    sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem(AUTH_STORAGE_KEY);
   }
   updateAuthUI();
 }
@@ -532,6 +532,14 @@ function fetchRegistered() {
 }
 
 // Inicializa na aba de cadastro
+// Migra sessão antiga para login persistente no navegador.
+if (
+  sessionStorage.getItem(AUTH_STORAGE_KEY) === "1" &&
+  localStorage.getItem(AUTH_STORAGE_KEY) !== "1"
+) {
+  localStorage.setItem(AUTH_STORAGE_KEY, "1");
+}
+
 setupAuthButton();
 setupSheetLink();
 updateAuthUI();
