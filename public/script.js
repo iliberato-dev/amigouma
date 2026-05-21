@@ -4,6 +4,9 @@ const APPS_SCRIPT_URL =
 const GOOGLE_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1uQKBF1ADRcwUdTy8ORg9xDDeURV4gTL10oCRVf1cBys/edit?gid=0#gid=0";
 
+// Cole aqui a URL do logo do WhatsApp que voce quiser usar nos cards.
+const WHATSAPP_LOGO_URL = "https://cdn-icons-png.flaticon.com/256/2111/2111728.png";
+
 const AUTH_STORAGE_KEY = "uma_auth_ok";
 const LOGIN_USER = "admin";
 const LOGIN_PASSWORD = "setor53";
@@ -496,6 +499,40 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function buildWhatsAppMessage(friendName) {
+  const cleanName = String(friendName || "").trim();
+  if (cleanName) {
+    return `Ola, ${cleanName}! Tudo bem? Estou entrando em contato pelo cadastro do amigo UMA.`;
+  }
+  return "Ola! Tudo bem? Estou entrando em contato pelo cadastro do amigo UMA.";
+}
+
+function renderWhatsAppLogo() {
+  if (WHATSAPP_LOGO_URL && /^https?:\/\//i.test(WHATSAPP_LOGO_URL)) {
+    return `<img class="whatsapp-logo-img" src="${escapeHtml(WHATSAPP_LOGO_URL)}" alt="WhatsApp">`;
+  }
+  return '<span class="whatsapp-logo" aria-hidden="true">WA</span>';
+}
+
+function renderWhatsAppPhone(phoneText, friendName) {
+  const digits = digitsOnly(phoneText);
+  let waDigits = "";
+
+  if (digits.length === 10 || digits.length === 11) {
+    waDigits = `55${digits}`;
+  } else if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) {
+    waDigits = digits;
+  }
+
+  if (!waDigits) {
+    return `<span>${escapeHtml(phoneText)}</span>`;
+  }
+
+  const message = encodeURIComponent(buildWhatsAppMessage(friendName));
+
+  return `<a class="whatsapp-link" href="https://wa.me/${waDigits}?text=${message}" target="_blank" rel="noopener noreferrer" aria-label="Conversar no WhatsApp com ${escapeHtml(friendName || "contato")}">${renderWhatsAppLogo()}<span>${escapeHtml(phoneText)}</span></a>`;
+}
+
 function renderTable(rows) {
   if (!rows.length) {
     return '<p class="empty-state">Nenhum cadastrado encontrado.</p>';
@@ -511,7 +548,7 @@ function renderTable(rows) {
         <div class="card-grid">
           <p><strong>Amigo UMA</strong><span>${escapeHtml(row.nome_cadastrante)}</span></p>
           <p><strong>Cadastrado</strong><span>${escapeHtml(row.nome_amigo)}</span></p>
-          <p><strong>Telefone</strong><span>${escapeHtml(row.telefone)}</span></p>
+          <p><strong>Telefone</strong>${renderWhatsAppPhone(row.telefone, row.nome_amigo)}</p>
           <p class="card-address"><strong>Endereço</strong><span>${escapeHtml(row.endereco)}</span></p>
         </div>
       </article>

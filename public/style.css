@@ -609,6 +609,66 @@ tbody tr:nth-child(even) {
   word-break: break-word;
 }
 
+.card-grid .whatsapp-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1e293b;
+  text-decoration: none;
+  width: fit-content;
+  border-bottom: 1px dashed rgba(30, 41, 59, 0.35);
+  transition:
+    color 0.2s ease,
+    border-bottom-color 0.2s ease;
+}
+
+.card-grid .whatsapp-link:hover {
+  color: #25d366;
+  border-bottom-color: #25d366;
+}
+
+.card-grid .whatsapp-link span {
+  color: inherit;
+}
+
+.whatsapp-logo {
+  width: 21px;
+  height: 21px;
+  border-radius: 999px;
+  background: linear-gradient(145deg, #25d366, #16a34a);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  letter-spacing: 0.2px;
+  font-weight: 900;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.whatsapp-logo-img {
+  width: 21px;
+  height: 21px;
+  border-radius: 999px;
+  object-fit: cover;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.25);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.card-grid .whatsapp-link:hover .whatsapp-logo,
+.card-grid .whatsapp-link:hover .whatsapp-logo-img {
+  animation: whatsappBounce 900ms ease-in-out infinite;
+  transform: none;
+  box-shadow: 0 7px 14px rgba(37, 211, 102, 0.45);
+}
+
 .card-address {
   padding-top: 0.45rem;
   border-top: 1px dashed #d8e6fb;
@@ -714,6 +774,24 @@ tbody tr:nth-child(even) {
   to {
     transform: translateY(-10px);
     opacity: 0;
+  }
+}
+
+@keyframes whatsappBounce {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+
+  40% {
+    transform: scale(1.14) rotate(-10deg);
+  }
+
+  70% {
+    transform: scale(1.05) rotate(-3deg);
+  }
+
+  100% {
+    transform: scale(1.08) rotate(-8deg);
   }
 }
 
