@@ -501,34 +501,27 @@ function renderTable(rows) {
     return '<p class="empty-state">Nenhum cadastrado encontrado.</p>';
   }
 
-  const tableRows = rows
+  const cards = rows
     .map(
-      (row) => `
-      <tr>
-        <td>${escapeHtml(row.nome_cadastrante)}</td>
-        <td>${escapeHtml(row.congregacao)}</td>
-        <td>${escapeHtml(row.nome_amigo)}</td>
-        <td>${escapeHtml(row.telefone)}</td>
-        <td>${escapeHtml(row.endereco)}</td>
-      </tr>
+      (row, index) => `
+      <article class="cadastro-card" style="--i:${index}">
+        <header class="card-head">
+          <span class="card-chip">${escapeHtml(row.congregacao)}</span>
+        </header>
+        <div class="card-grid">
+          <p><strong>Amigo UMA</strong><span>${escapeHtml(row.nome_cadastrante)}</span></p>
+          <p><strong>Cadastrado</strong><span>${escapeHtml(row.nome_amigo)}</span></p>
+          <p><strong>Telefone</strong><span>${escapeHtml(row.telefone)}</span></p>
+          <p class="card-address"><strong>Endereço</strong><span>${escapeHtml(row.endereco)}</span></p>
+        </div>
+      </article>
     `,
     )
     .join("");
 
   return `
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>Cadastrante</th>
-            <th>Congregação</th>
-            <th>Amigo UMA</th>
-            <th>Telefone</th>
-            <th>Endereço</th>
-          </tr>
-        </thead>
-        <tbody>${tableRows}</tbody>
-      </table>
+    <div class="cards-grid" aria-live="polite">
+      ${cards}
     </div>
   `;
 }
