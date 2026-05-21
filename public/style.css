@@ -74,22 +74,24 @@ body {
 .uma-transition-names {
   position: absolute;
   inset: 0;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 0.5rem;
-  padding: clamp(1rem, 2vw, 2rem);
-  align-content: center;
+  pointer-events: none;
+  overflow: hidden;
 }
 
 .uma-name {
-  color: rgba(255, 255, 255, 0.22);
+  position: absolute;
+  left: var(--x, 50%);
+  top: var(--y, 50%);
+  transform: translate(-50%, -50%) rotate(var(--r, 0deg));
+  color: rgba(255, 255, 255, var(--o, 0.22));
   font-family: "Baloo 2", cursive;
-  font-size: clamp(0.9rem, 2.2vw, 1.35rem);
+  font-size: var(--s, 1rem);
   font-weight: 700;
   letter-spacing: 0.35px;
   text-align: center;
   animation: driftNames 2.8s ease-in-out infinite;
-  animation-delay: calc(var(--n, 0) * 45ms);
+  animation-delay: var(--d, 0ms);
+  white-space: nowrap;
 }
 
 .uma-transition-center {
@@ -905,19 +907,21 @@ tbody tr:nth-child(even) {
 
 @keyframes driftNames {
   0% {
-    opacity: 0.4;
-    transform: translateY(10px) scale(0.98);
+    opacity: 0.35;
+    transform: translate(-50%, calc(-50% + 10px)) rotate(var(--r, 0deg))
+      scale(0.97);
   }
 
   50% {
     opacity: 0.95;
-    transform: translateY(0) scale(1.03);
-    color: rgba(255, 255, 255, 0.56);
+    transform: translate(-50%, -50%) rotate(var(--r, 0deg)) scale(1.04);
+    color: rgba(255, 255, 255, 0.62);
   }
 
   100% {
-    opacity: 0.45;
-    transform: translateY(-10px) scale(0.98);
+    opacity: 0.4;
+    transform: translate(-50%, calc(-50% - 10px)) rotate(var(--r, 0deg))
+      scale(0.97);
   }
 }
 
@@ -1008,7 +1012,7 @@ tbody tr:nth-child(even) {
     font-size: 0.95rem;
   }
 
-  .uma-transition-names {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .uma-name {
+    font-size: min(var(--s, 1rem), 1.15rem);
   }
 }

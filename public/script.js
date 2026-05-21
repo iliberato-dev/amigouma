@@ -80,7 +80,22 @@ function renderTransitionNames() {
   const names = getTransitionNames();
   const repeated = Array.from({ length: 36 }, (_, index) => {
     const name = names[index % names.length];
-    return `<span class="uma-name" style="--n:${index}">${escapeHtml(name)}</span>`;
+    const xBase = (index * 37) % 100;
+    const yBase = (index * 53) % 100;
+    let x = Math.min(96, Math.max(4, xBase));
+    let y = Math.min(95, Math.max(6, yBase));
+
+    // Evita muitos nomes no centro para manter o AMIGO UMA legível.
+    if (x > 35 && x < 65 && y > 34 && y < 66) {
+      y = y < 50 ? y - 18 : y + 18;
+    }
+
+    const size = (0.78 + ((index * 19) % 100) / 100).toFixed(2);
+    const opacity = (0.16 + ((index * 11) % 65) / 100).toFixed(2);
+    const delay = index * 85;
+    const rotate = ((index % 7) - 3) * 2;
+
+    return `<span class="uma-name" style="--n:${index};--x:${x}%;--y:${y}%;--s:${size}rem;--o:${opacity};--d:${delay}ms;--r:${rotate}deg">${escapeHtml(name)}</span>`;
   });
 
   return repeated.join("");
@@ -102,7 +117,7 @@ function runScreenTransition(nextRender) {
     <div class="uma-transition-names" aria-hidden="true">${renderTransitionNames()}</div>
     <div class="uma-transition-center">
       <p class="uma-transition-sub">Conectando amigos...</p>
-      <h1>AMIGO UMA</h1>
+      <h1><img src="https://images.crunchbase.com/image/upload/c_pad,h_256,w_256,f_auto,q_auto:eco,dpr_1/ilvpms2r4xeuqjq2ou82?ik-sanitizeSvg=true" alt="Logo AMIGO UMA" width="150" height="150"></h1>
     </div>
   `;
 
