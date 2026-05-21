@@ -84,6 +84,40 @@ function saveTransitionNames(rows) {
   }
 }
 
+function addTransitionName(name) {
+  const trimmedName = getFirstAndSecondName(name);
+  if (!trimmedName) return;
+
+  if (Array.isArray(registeredRows)) {
+    const alreadyInRows = registeredRows.some(
+      (row) => getFirstAndSecondName(row && row.nome_amigo) === trimmedName,
+    );
+
+    if (!alreadyInRows) {
+      registeredRows.unshift({ nome_amigo: trimmedName });
+    }
+  }
+
+  try {
+    const cached = JSON.parse(
+      localStorage.getItem(TRANSITION_NAMES_STORAGE_KEY) || "[]",
+    );
+    const names = Array.isArray(cached)
+      ? cached.map((item) => getFirstAndSecondName(item)).filter(Boolean)
+      : [];
+
+    if (!names.includes(trimmedName)) {
+      names.unshift(trimmedName);
+      localStorage.setItem(
+        TRANSITION_NAMES_STORAGE_KEY,
+        JSON.stringify(names.slice(0, 80)),
+      );
+    }
+  } catch {
+    // Ignora falha de cache local.
+  }
+}
+
 function renderTransitionNames() {
   const names = getTransitionNames();
   const repeated = Array.from({ length: 36 }, (_, index) => {
@@ -606,6 +640,7 @@ function enviarCadastro(e) {
     })
     .then((resp) => {
       if (resp.result === "success") {
+        addTransitionName(data.nome_amigo);
         showFormMessage("success", "Cadastro realizado com sucesso!");
         form.reset();
       } else if (resp.result === "duplicate") {
