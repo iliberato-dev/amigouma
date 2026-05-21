@@ -10,6 +10,72 @@ function outputJsonp(payload, callback) {
   );
 }
 
+function normalizeSpaces(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function digitsOnly(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function formatPhone(value) {
+  var digits = digitsOnly(value).slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6)
+    return "(" + digits.slice(0, 2) + ") " + digits.slice(2);
+  if (digits.length <= 10) {
+    return (
+      "(" +
+      digits.slice(0, 2) +
+      ") " +
+      digits.slice(2, 6) +
+      "-" +
+      digits.slice(6)
+    );
+  }
+  return (
+    "(" + digits.slice(0, 2) + ") " + digits.slice(2, 7) + "-" + digits.slice(7)
+  );
+}
+
+function toTitleCaseWords(value) {
+  return String(value || "")
+    .split(" ")
+    .map(function (word) {
+      if (!word) return "";
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
+}
+
+function normalizeCongregacao(value) {
+  var compact = normalizeSpaces(value).toLowerCase();
+  return toTitleCaseWords(compact);
+}
+
+function normalizeKey(value) {
+  return normalizeSpaces(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function isDuplicateRow(values, congregacao, nomeAmigo, telefone) {
+  var targetCongregacao = normalizeKey(congregacao);
+  var targetNomeAmigo = normalizeKey(nomeAmigo);
+  var targetTelefone = digitsOnly(telefone);
+
+  return values.some(function (r) {
+    return (
+      normalizeKey(r[1]) === targetCongregacao &&
+      normalizeKey(r[2]) === targetNomeAmigo &&
+      digitsOnly(r[3]) === targetTelefone
+    );
+  });
+}
+
 function doGet(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheets()[0];
@@ -18,12 +84,29 @@ function doGet(e) {
   var action = p.action;
 
   if (action === "add") {
+    var nomeCadastrante = normalizeSpaces(p.nome_cadastrante || "");
+    var congregacao = normalizeCongregacao(p.congregacao || "");
+    var nomeAmigo = normalizeSpaces(p.nome_amigo || "");
+    var telefone = formatPhone(p.telefone || "");
+    var endereco = normalizeSpaces(p.endereco || "");
+
+    var lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      var existingValues = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+      if (isDuplicateRow(existingValues, congregacao, nomeAmigo, telefone)) {
+        return outputJsonp(
+          { result: "duplicate", message: "Cadastro ja existente." },
+          callback,
+        );
+      }
+    }
+
     sheet.appendRow([
-      p.nome_cadastrante || "",
-      p.congregacao || "",
-      p.nome_amigo || "",
-      p.telefone || "",
-      p.endereco || "",
+      nomeCadastrante,
+      congregacao,
+      nomeAmigo,
+      telefone,
+      endereco,
     ]);
     return outputJsonp({ result: "success" }, callback);
   }

@@ -315,6 +315,68 @@ button[type="submit"]:disabled {
   text-align: center;
 }
 
+.password-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.password-toggle input {
+  width: auto;
+  margin: 0;
+}
+
+.loading-state {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  display: grid;
+  gap: 0.6rem;
+  justify-items: center;
+}
+
+.loading-state p {
+  margin: 0;
+  color: #1f2a44;
+  font-weight: 700;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid #c7ddff;
+  border-top-color: #0ea5e9;
+  animation: spin 0.9s linear infinite;
+}
+
+.skeleton-list {
+  width: min(100%, 520px);
+  display: grid;
+  gap: 0.45rem;
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ebf2ff 25%, #dbeafe 50%, #ebf2ff 75%);
+  background-size: 220% 100%;
+  animation: shimmer 1.3s ease infinite;
+}
+
+.skeleton-line:nth-child(2) {
+  width: 92%;
+}
+
+.skeleton-line:nth-child(3) {
+  width: 78%;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -388,6 +450,22 @@ tbody tr:nth-child(even) {
 .page-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 @media (max-width: 900px) {

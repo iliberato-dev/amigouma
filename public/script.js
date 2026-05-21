@@ -131,14 +131,27 @@ function showLogin(message = "") {
         <input type="text" name="usuario" autocomplete="username" required>
       </label>
       <label>Senha:
-        <input type="password" name="senha" autocomplete="current-password" required>
+        <input id="senha-input" type="password" name="senha" autocomplete="current-password" required>
+      </label>
+      <label class="password-toggle">
+        <input id="show-password" type="checkbox">
+        Mostrar senha
       </label>
       <button id="login-submit" type="submit">Entrar</button>
-    
+      <div id="login-message" class="login-help"></div>
     </form>
   `;
 
   const loginForm = document.getElementById("login-form");
+  const senhaInput = document.getElementById("senha-input");
+  const showPassword = document.getElementById("show-password");
+
+  if (showPassword && senhaInput) {
+    showPassword.addEventListener("change", () => {
+      senhaInput.type = showPassword.checked ? "text" : "password";
+    });
+  }
+
   loginForm.onsubmit = handleLogin;
 }
 
@@ -196,7 +209,7 @@ function showForm() {
 
 function showCount() {
   if (!isAuthenticated()) {
-    showLogin("Faca login para acessar cadastrados.");
+    showLogin("Login expirado. Entre novamente para acessar cadastrados.");
     return;
   }
 
@@ -209,7 +222,7 @@ function showCount() {
             <option value="">Todas as congregações</option>
           </select>
         </div>
-        <div id="table-container"></div>
+        <div id="table-container">${renderLoadingState()}</div>
     `;
   fetchRegistered();
 }
@@ -226,6 +239,85 @@ function formatPhone(value) {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
   }
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+function toTitleCaseWords(value) {
+  return String(value || "")
+    .split(" ")
+    .map((word) => {
+      if (!word) return "";
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
+}
+
+function normalizeCongregacao(value) {
+  const compact = String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  return toTitleCaseWords(compact);
+}
+
+function normalizeFormData(rawData) {
+  return {
+    nome_cadastrante: String(rawData.nome_cadastrante || "")
+      .replace(/\s+/g, " ")
+      .trim(),
+    congregacao: normalizeCongregacao(rawData.congregacao),
+    nome_amigo: String(rawData.nome_amigo || "")
+      .replace(/\s+/g, " ")
+      .trim(),
+    telefone: formatPhone(rawData.telefone),
+    endereco: String(rawData.endereco || "")
+      .replace(/\s+/g, " ")
+      .trim(),
+  };
+}
+
+function isDuplicateRegistration(rows, data) {
+  const phone = digitsOnly(data.telefone);
+  const friend = normalizeText(data.nome_amigo);
+  const congregacao = normalizeText(data.congregacao);
+
+  return rows.some((row) => {
+    return (
+      digitsOnly(row.telefone) === phone &&
+      normalizeText(row.nome_amigo) === friend &&
+      normalizeText(row.congregacao) === congregacao
+    );
+  });
+}
+
+function getFriendlyApiError(error) {
+  if (!navigator.onLine) {
+    return "Sem internet. Verifique sua conexão e tente novamente.";
+  }
+
+  const message = String(error && error.message ? error.message : "");
+  if (message.includes("Tempo de resposta excedido")) {
+    return "API indisponivel no momento. Tente novamente em instantes.";
+  }
+
+  if (message.includes("Falha na requisição")) {
+    return "API indisponivel. Verifique se o Apps Script esta publicado.";
+  }
+
+  return "Erro inesperado ao comunicar com a API.";
+}
+
+function renderLoadingState() {
+  return `
+    <div class="loading-state" role="status" aria-live="polite" aria-busy="true">
+      <div class="spinner"></div>
+      <p>Carregando cadastrados...</p>
+      <div class="skeleton-list" aria-hidden="true">
+        <div class="skeleton-line"></div>
+        <div class="skeleton-line"></div>
+        <div class="skeleton-line"></div>
+      </div>
+    </div>
+  `;
 }
 
 function validateFormData(data) {
@@ -264,13 +356,17 @@ function enviarCadastro(e) {
     return;
   }
 
-  const data = {
+  const rawData = {
     nome_cadastrante: form.nome_cadastrante.value.trim(),
     congregacao: form.congregacao.value.trim(),
     nome_amigo: form.nome_amigo.value.trim(),
     telefone: form.telefone.value.trim(),
     endereco: form.endereco.value.trim(),
   };
+
+  const data = normalizeFormData(rawData);
+  form.congregacao.value = data.congregacao;
+  form.telefone.value = data.telefone;
 
   const validationError = validateFormData(data);
   if (validationError) {
@@ -282,23 +378,42 @@ function enviarCadastro(e) {
   submitButton.disabled = true;
   submitButton.textContent = "Enviando...";
 
-  jsonpRequest(APPS_SCRIPT_URL, {
-    action: "add",
-    ...data,
-  })
+  jsonpRequest(APPS_SCRIPT_URL, { action: "list" })
+    .then((listData) => {
+      if (
+        Array.isArray(listData.rows) &&
+        isDuplicateRegistration(listData.rows, data)
+      ) {
+        throw new Error("DUPLICATE_RECORD");
+      }
+
+      return jsonpRequest(APPS_SCRIPT_URL, {
+        action: "add",
+        ...data,
+      });
+    })
     .then((resp) => {
       if (resp.result === "success") {
         document.getElementById("form-message").innerHTML =
           '<span class="success">Cadastro realizado com sucesso!</span>';
         form.reset();
+      } else if (resp.result === "duplicate") {
+        document.getElementById("form-message").innerHTML =
+          '<span class="error">Cadastro ja existente para este amigo, telefone e congregacao.</span>';
       } else {
         document.getElementById("form-message").innerHTML =
           '<span class="error">Erro ao cadastrar. Tente novamente.</span>';
       }
     })
-    .catch(() => {
+    .catch((error) => {
+      if (String(error && error.message) === "DUPLICATE_RECORD") {
+        document.getElementById("form-message").innerHTML =
+          '<span class="error">Cadastro ja existente para este amigo, telefone e congregacao.</span>';
+        return;
+      }
+
       document.getElementById("form-message").innerHTML =
-        '<span class="error">Erro de conexão.</span>';
+        `<span class="error">${escapeHtml(getFriendlyApiError(error))}</span>`;
     })
     .finally(() => {
       submitButton.disabled = false;
@@ -489,6 +604,11 @@ function fetchRegistered() {
   currentPage = 1;
   hideTableFilters();
 
+  const countNode = document.getElementById("count");
+  const tableNode = document.getElementById("table-container");
+  if (countNode) countNode.textContent = "Carregando...";
+  if (tableNode) tableNode.innerHTML = renderLoadingState();
+
   jsonpRequest(APPS_SCRIPT_URL, { action: "list" })
     .then((data) => {
       if (data && data.result === "ok") {
@@ -524,10 +644,10 @@ function fetchRegistered() {
       document.getElementById("table-container").innerHTML =
         '<p class="empty-state">Verifique se a URL implantada do Apps Script e a mais recente.</p>';
     })
-    .catch(() => {
-      document.getElementById("count").textContent =
-        "Erro ao carregar cadastrados.";
-      document.getElementById("table-container").innerHTML = "";
+    .catch((error) => {
+      document.getElementById("count").textContent = "Falha ao carregar";
+      document.getElementById("table-container").innerHTML =
+        `<p class="error">${escapeHtml(getFriendlyApiError(error))}</p>`;
     });
 }
 
