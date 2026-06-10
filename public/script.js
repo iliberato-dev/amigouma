@@ -537,6 +537,7 @@ function showForm(options = {}) {
 
   document.getElementById("main-content").innerHTML = `
         <h2>Cadastro UMA</h2>
+        
         <form id="cadastroForm">
             <label>Seu nome:
                 <input type="text" name="nome_cadastrante" required>
