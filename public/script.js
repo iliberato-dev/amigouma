@@ -1,5 +1,5 @@
 const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbxIwBH8lpOJ4n0hlTjh_Knib5mY8viOSTlfsSmHS7KyvdI8tog6e5skIz3Y5Jj1KzbpkA/exec";
+  "https://script.google.com/macros/s/AKfycbwXFZ8225DlAQaxKamybXyWAutZ5Mso2TR2RcKwfgEt7WXaGXwA79TR71hdX12yMroaIw/exec";
 
 const GOOGLE_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1uQKBF1ADRcwUdTy8ORg9xDDeURV4gTL10oCRVf1cBys/edit?gid=0#gid=0";
@@ -19,6 +19,7 @@ const SHOW_TRANSITION_ON_BOOT = true;
 const LOGIN_USER = "admin";
 const LOGIN_PASSWORD = "setor53";
 const CONGREGACAO_OUTRA_VALUE = "__OTHER__";
+const OBSERVACAO_OUTRA_VALUE = "outra";
 const ENDERECO_SUGGESTIONS_URL = "https://nominatim.openstreetmap.org/search";
 const ENDERECO_SUGGESTIONS_LIMIT = 5;
 const ENDERECO_CIDADE_ALVO = "Sao Paulo";
@@ -558,6 +559,31 @@ function showForm(options = {}) {
             <label>Telefone do amigo UMA:
                 <input type="tel" name="telefone" maxlength="15" placeholder="(99) 99999-9999" required>
             </label>
+            <label>É evangélico?
+              <select name="evangelico" required>
+                <option value="">Selecione</option>
+                <option value="Sim">Sim</option>
+                <option value="Não">Não</option>
+              </select>
+            </label>
+            <label>Dia que irá ao evento:
+              <select name="dia_evento" required>
+                <option value="">Selecione o dia</option>
+                <option value="04">Dia 04</option>
+                <option value="05">Dia 05</option>
+                <option value="06">Dia 06</option>
+              </select>
+            </label>
+            <fieldset class="obs-fieldset">
+              <legend>Observações</legend>
+              <div class="obs-options">
+                <label class="obs-option"><input type="checkbox" name="observacoes" value="Cadeirante"> Cadeirante</label>
+                <label class="obs-option"><input type="checkbox" name="observacoes" value="Deficiente visual"> Deficiente visual</label>
+                <label class="obs-option"><input type="checkbox" name="observacoes" value="Deficiente auditivo"> Deficiente auditivo</label>
+                <label class="obs-option"><input id="obs-outra-check" type="checkbox" name="observacoes" value="${OBSERVACAO_OUTRA_VALUE}"> Outra</label>
+              </div>
+              <input id="obs-outra-input" class="hidden" type="text" name="observacao_outra" maxlength="80" placeholder="Descreva a observação" disabled>
+            </fieldset>
             <label>Endereço do amigo UMA:
               <div class="address-autocomplete-wrap">
                 <textarea name="endereco" maxlength="180" required></textarea>
@@ -601,6 +627,28 @@ function showForm(options = {}) {
   form.telefone.addEventListener("input", (event) => {
     event.target.value = formatPhone(event.target.value);
   });
+
+  const observacaoOutraCheck = document.getElementById("obs-outra-check");
+  const observacaoOutraInput = document.getElementById("obs-outra-input");
+
+  function toggleObservacaoOutra() {
+    const isChecked = observacaoOutraCheck && observacaoOutraCheck.checked;
+    observacaoOutraInput.classList.toggle("hidden", !isChecked);
+    observacaoOutraInput.disabled = !isChecked;
+    observacaoOutraInput.required = Boolean(isChecked);
+
+    if (!isChecked) {
+      observacaoOutraInput.value = "";
+    }
+  }
+
+  if (observacaoOutraCheck && observacaoOutraInput) {
+    observacaoOutraCheck.addEventListener("change", toggleObservacaoOutra);
+    form.addEventListener("reset", () => {
+      setTimeout(toggleObservacaoOutra, 0);
+    });
+    toggleObservacaoOutra();
+  }
 
   setupEnderecoAutocomplete(form);
 }
@@ -961,6 +1009,15 @@ function normalizeFormData(rawData) {
       .replace(/\s+/g, " ")
       .trim(),
     telefone: formatPhone(rawData.telefone),
+    evangelico: String(rawData.evangelico || "")
+      .replace(/\s+/g, " ")
+      .trim(),
+    dia_evento: String(rawData.dia_evento || "")
+      .replace(/\s+/g, " ")
+      .trim(),
+    observacoes: String(rawData.observacoes || "")
+      .replace(/\s+/g, " ")
+      .trim(),
     endereco: String(rawData.endereco || "")
       .replace(/\s+/g, " ")
       .trim(),
@@ -1029,6 +1086,14 @@ function validateFormData(data) {
 
   if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
     return "Telefone invalido. Use DDD + numero.";
+  }
+
+  if (!["Sim", "Não"].includes(data.evangelico)) {
+    return "Selecione Sim ou Não no campo de evangélico.";
+  }
+
+  if (!["04", "05", "06"].includes(data.dia_evento)) {
+    return "Selecione o dia do evento (04, 05 ou 06).";
   }
 
   if (data.endereco.trim().length < 5) {
@@ -1121,6 +1186,9 @@ function enviarCadastro(e) {
         : form.congregacao.value.trim(),
     nome_amigo: form.nome_amigo.value.trim(),
     telefone: form.telefone.value.trim(),
+    evangelico: form.evangelico.value.trim(),
+    dia_evento: form.dia_evento.value.trim(),
+    observacoes: getObservacoesText(form),
     endereco: form.endereco.value.trim(),
   };
 
@@ -1188,6 +1256,23 @@ function enviarCadastro(e) {
     });
 }
 
+function getObservacoesText(form) {
+  const selectedValues = Array.from(
+    form.querySelectorAll('input[name="observacoes"]:checked'),
+  )
+    .map((node) => String(node.value || "").trim())
+    .filter(Boolean);
+
+  const hasOutra = selectedValues.includes(OBSERVACAO_OUTRA_VALUE);
+  const observacaoOutra = String(form.observacao_outra?.value || "").trim();
+
+  const normalizedValues = selectedValues
+    .filter((item) => item !== OBSERVACAO_OUTRA_VALUE)
+    .concat(hasOutra && observacaoOutra ? [`Outra: ${observacaoOutra}`] : []);
+
+  return normalizedValues.join("; ");
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -1251,6 +1336,9 @@ function renderTable(rows) {
           <p><strong>Amigo UMA</strong><span>${escapeHtml(row.nome_cadastrante)}</span></p>
           <p><strong>Cadastrado</strong><span>${escapeHtml(row.nome_amigo)}</span></p>
           <p><strong>Telefone</strong>${renderWhatsAppPhone(row.telefone, row.nome_amigo)}</p>
+          <p><strong>Evangélico</strong><span>${escapeHtml(row.evangelico || "-")}</span></p>
+          <p><strong>Dia evento</strong><span>${escapeHtml(row.dia_evento || "-")}</span></p>
+          <p><strong>Observações</strong><span>${escapeHtml(row.observacoes || "-")}</span></p>
           <p class="card-address"><strong>Endereço</strong><span>${escapeHtml(row.endereco)}</span></p>
         </div>
       </article>
@@ -1341,7 +1429,7 @@ function applyTableFilters() {
   filteredRows = registeredRows.filter((row) => {
     const rowCongregacao = normalizeText(row.congregacao);
     const searchable = normalizeText(
-      `${row.nome_cadastrante} ${row.nome_amigo} ${row.telefone} ${row.endereco}`,
+      `${row.nome_cadastrante} ${row.nome_amigo} ${row.telefone} ${row.endereco} ${row.evangelico || ""} ${row.dia_evento || ""} ${row.observacoes || ""}`,
     );
 
     const matchesCongregacao =

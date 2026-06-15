@@ -88,14 +88,11 @@ function doGet(e) {
     var congregacao = normalizeCongregacao(p.congregacao || "");
     var nomeAmigo = normalizeSpaces(p.nome_amigo || "");
     var telefone = formatPhone(p.telefone || "");
-    var evangelico = normalizeSpaces(p.evangelico || "");
-    var diaEvento = normalizeSpaces(p.dia_evento || "");
-    var observacoes = normalizeSpaces(p.observacoes || "");
     var endereco = normalizeSpaces(p.endereco || "");
 
     var lastRow = sheet.getLastRow();
     if (lastRow > 1) {
-      var existingValues = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+      var existingValues = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
       if (isDuplicateRow(existingValues, congregacao, nomeAmigo, telefone)) {
         return outputJsonp(
           { result: "duplicate", message: "Cadastro ja existente." },
@@ -110,9 +107,6 @@ function doGet(e) {
       nomeAmigo,
       telefone,
       endereco,
-      evangelico,
-      diaEvento,
-      observacoes,
     ]);
     return outputJsonp({ result: "success" }, callback);
   }
@@ -128,7 +122,7 @@ function doGet(e) {
       return outputJsonp({ rows: [] }, callback);
     }
 
-    var values = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+    var values = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
     var rows = values.map(function (r) {
       return {
         nome_cadastrante: r[0] || "",
@@ -136,9 +130,6 @@ function doGet(e) {
         nome_amigo: r[2] || "",
         telefone: r[3] || "",
         endereco: r[4] || "",
-        evangelico: r[5] || "",
-        dia_evento: r[6] || "",
-        observacoes: r[7] || "",
       };
     });
 
