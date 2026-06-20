@@ -569,9 +569,9 @@ function showForm(options = {}) {
             <label>Dia que irá ao evento:
               <select name="dia_evento" required>
                 <option value="">Selecione o dia</option>
-                <option value="04">Dia 04</option>
-                <option value="05">Dia 05</option>
-                <option value="06">Dia 06</option>
+                <option value="28">Dia 28</option>
+                <option value="29">Dia 29</option>
+                <option value="30">Dia 30</option>
               </select>
             </label>
             <fieldset class="obs-fieldset">
@@ -1092,8 +1092,8 @@ function validateFormData(data) {
     return "Selecione Sim ou Não no campo de evangélico.";
   }
 
-  if (!["04", "05", "06"].includes(data.dia_evento)) {
-    return "Selecione o dia do evento (04, 05 ou 06).";
+  if (!["28", "29", "30"].includes(data.dia_evento)) {
+    return "Selecione o dia do evento (28, 29 ou 30).";
   }
 
   if (data.endereco.trim().length < 5) {
