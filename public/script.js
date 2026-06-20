@@ -961,6 +961,14 @@ function showCount(options = {}) {
           <select id="congregacao-filter">
             <option value="">Todas as congregações</option>
           </select>
+          <select id="dia-evento-filter">
+            <option value="">Todos os dias</option>
+          </select>
+          <select id="evangelico-filter">
+            <option value="">Evangélico (todos)</option>
+            <option value="Sim">Evangélico: Sim</option>
+            <option value="Não">Evangélico: Não</option>
+          </select>
         </div>
         <div id="table-container">${renderLoadingState()}</div>
     `;
@@ -1421,22 +1429,40 @@ function normalizeText(value) {
 function applyTableFilters() {
   const searchInput = document.getElementById("search-input");
   const congregacaoFilter = document.getElementById("congregacao-filter");
-  if (!searchInput || !congregacaoFilter) return;
+  const diaEventoFilter = document.getElementById("dia-evento-filter");
+  const evangelicoFilter = document.getElementById("evangelico-filter");
+  if (
+    !searchInput ||
+    !congregacaoFilter ||
+    !diaEventoFilter ||
+    !evangelicoFilter
+  )
+    return;
 
   const term = normalizeText(searchInput.value.trim());
   const selectedCongregacao = normalizeText(congregacaoFilter.value);
+  const selectedDiaEvento = normalizeText(diaEventoFilter.value);
+  const selectedEvangelico = normalizeText(evangelicoFilter.value);
 
   filteredRows = registeredRows.filter((row) => {
     const rowCongregacao = normalizeText(row.congregacao);
+    const rowDiaEvento = normalizeText(row.dia_evento);
+    const rowEvangelico = normalizeText(row.evangelico);
     const searchable = normalizeText(
       `${row.nome_cadastrante} ${row.nome_amigo} ${row.telefone} ${row.endereco} ${row.evangelico || ""} ${row.dia_evento || ""} ${row.observacoes || ""}`,
     );
 
     const matchesCongregacao =
       !selectedCongregacao || rowCongregacao === selectedCongregacao;
+    const matchesDiaEvento =
+      !selectedDiaEvento || rowDiaEvento === selectedDiaEvento;
+    const matchesEvangelico =
+      !selectedEvangelico || rowEvangelico === selectedEvangelico;
     const matchesTerm = !term || searchable.includes(term);
 
-    return matchesCongregacao && matchesTerm;
+    return (
+      matchesCongregacao && matchesDiaEvento && matchesEvangelico && matchesTerm
+    );
   });
 
   currentPage = 1;
@@ -1447,8 +1473,17 @@ function setupTableFilters(rows) {
   const filterWrap = document.getElementById("table-filters");
   const searchInput = document.getElementById("search-input");
   const congregacaoFilter = document.getElementById("congregacao-filter");
+  const diaEventoFilter = document.getElementById("dia-evento-filter");
+  const evangelicoFilter = document.getElementById("evangelico-filter");
 
-  if (!filterWrap || !searchInput || !congregacaoFilter) return;
+  if (
+    !filterWrap ||
+    !searchInput ||
+    !congregacaoFilter ||
+    !diaEventoFilter ||
+    !evangelicoFilter
+  )
+    return;
 
   const congregacoes = Array.from(
     new Set(
@@ -1457,6 +1492,14 @@ function setupTableFilters(rows) {
         .filter((value) => value.length > 0),
     ),
   ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+  const diasEvento = Array.from(
+    new Set(
+      rows
+        .map((row) => String(row.dia_evento || "").trim())
+        .filter((value) => value.length > 0),
+    ),
+  ).sort((a, b) => Number(a) - Number(b));
 
   congregacaoFilter.innerHTML =
     '<option value="">Todas as congregações</option>' +
@@ -1467,9 +1510,29 @@ function setupTableFilters(rows) {
       )
       .join("");
 
+  diaEventoFilter.innerHTML =
+    '<option value="">Todos os dias</option>' +
+    diasEvento
+      .map(
+        (dia) =>
+          `<option value="${escapeHtml(dia)}">Dia ${escapeHtml(dia)}</option>`,
+      )
+      .join("");
+
+  evangelicoFilter.innerHTML =
+    '<option value="">Evangélico (todos)</option>' +
+    ["Sim", "Não"]
+      .map(
+        (opcao) =>
+          `<option value="${escapeHtml(opcao)}">Evangélico: ${escapeHtml(opcao)}</option>`,
+      )
+      .join("");
+
   if (!searchInput.dataset.bound) {
     searchInput.addEventListener("input", applyTableFilters);
     congregacaoFilter.addEventListener("change", applyTableFilters);
+    diaEventoFilter.addEventListener("change", applyTableFilters);
+    evangelicoFilter.addEventListener("change", applyTableFilters);
     searchInput.dataset.bound = "1";
   }
 
