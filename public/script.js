@@ -564,6 +564,7 @@ function showForm(options = {}) {
                 <option value="">Selecione</option>
                 <option value="Sim">Sim</option>
                 <option value="Não">Não</option>
+                <option value="Afastado(a)">Afastado(a)</option>
               </select>
             </label>
             <label>Dia que irá ao evento:
@@ -968,6 +969,7 @@ function showCount(options = {}) {
             <option value="">Evangélico (todos)</option>
             <option value="Sim">Evangélico: Sim</option>
             <option value="Não">Evangélico: Não</option>
+            <option value="Afastado(a)">Evangélico: Afastado(a)</option>
           </select>
         </div>
         <div id="table-container">${renderLoadingState()}</div>
@@ -1096,8 +1098,8 @@ function validateFormData(data) {
     return "Telefone invalido. Use DDD + numero.";
   }
 
-  if (!["Sim", "Não"].includes(data.evangelico)) {
-    return "Selecione Sim ou Não no campo de evangélico.";
+  if (!["Sim", "Não", "Afastado(a)"].includes(data.evangelico)) {
+    return "Selecione Sim, Não ou Afastado(a) no campo de evangélico.";
   }
 
   if (!["28", "29", "30"].includes(data.dia_evento)) {
@@ -1521,7 +1523,7 @@ function setupTableFilters(rows) {
 
   evangelicoFilter.innerHTML =
     '<option value="">Evangélico (todos)</option>' +
-    ["Sim", "Não"]
+    ["Sim", "Não", "Afastado(a)"]
       .map(
         (opcao) =>
           `<option value="${escapeHtml(opcao)}">Evangélico: ${escapeHtml(opcao)}</option>`,
