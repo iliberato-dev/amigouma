@@ -977,14 +977,14 @@ function showCount(options = {}) {
             <option value="Não">Presença: Não</option>
             <option value="Ainda não confirmou">Presença: Ainda não confirmou</option>
           </select>
-          <button id="download-csv-button" type="button">Baixar CSV</button>
+          <button id="download-pdf-button" type="button">Baixar PDF</button>
         </div>
         <div id="table-container">${renderLoadingState()}</div>
     `;
 
-  const downloadButton = document.getElementById("download-csv-button");
+  const downloadButton = document.getElementById("download-pdf-button");
   if (downloadButton) {
-    downloadButton.addEventListener("click", downloadRegisteredRowsAsCsv);
+    downloadButton.addEventListener("click", downloadRegisteredRowsAsPdf);
   }
 
   fetchRegistered();
@@ -1345,52 +1345,142 @@ function updatePresenceForRow(rowNumber, newValue) {
     });
 }
 
-function downloadRegisteredRowsAsCsv() {
-  if (!registeredRows.length) {
+function getPresenceBadgeClass(value) {
+  const normalizedValue = String(value || "Ainda não confirmou").trim();
+  if (normalizedValue === "Sim") return "status-sim";
+  if (normalizedValue === "Não") return "status-nao";
+  return "status-pendente";
+}
+
+function downloadRegisteredRowsAsPdf() {
+  const rows = filteredRows.length ? filteredRows : registeredRows;
+  if (!rows.length) {
     showToast("error", "Nenhum cadastro para exportar.");
     return;
   }
 
-  const headers = [
-    "nome_cadastrante",
-    "congregacao",
-    "nome_amigo",
-    "telefone",
-    "endereco",
-    "evangelico",
-    "dia_evento",
-    "presenca_evento",
-    "observacoes",
-  ];
+  const rowsHtml = rows
+    .map((row) => {
+      const status = String(
+        row.presenca_evento || "Ainda não confirmou",
+      ).trim();
+      const statusClass = getPresenceBadgeClass(status);
 
-  const rows = registeredRows.map((row) => [
-    row.nome_cadastrante || "",
-    row.congregacao || "",
-    row.nome_amigo || "",
-    row.telefone || "",
-    row.endereco || "",
-    row.evangelico || "",
-    row.dia_evento || "",
-    row.presenca_evento || "",
-    row.observacoes || "",
-  ]);
+      return `
+        <tr>
+          <td>${escapeHtml(row.nome_amigo || "-")}</td>
+          <td>${escapeHtml(row.congregacao || "-")}</td>
+          <td>${escapeHtml(row.dia_evento || "-")}</td>
+          <td>${escapeHtml(row.evangelico || "-")}</td>
+          <td><span class="presence-badge ${statusClass}">${escapeHtml(status)}</span></td>
+          <td>${escapeHtml(row.telefone || "-")}</td>
+          <td>${escapeHtml(row.observacoes || "-")}</td>
+        </tr>
+      `;
+    })
+    .join("");
 
-  const csv = [headers, ...rows]
-    .map((line) => line.map(escapeCsvCell).join(","))
-    .join("\n");
+  const printWindow = window.open("", "_blank", "width=1200,height=900");
+  if (!printWindow) {
+    showToast("error", "O navegador bloqueou a janela de impressão.");
+    return;
+  }
 
-  const blob = new Blob(["\uFEFF" + csv], {
-    type: "text/csv;charset=utf-8;",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "cadastros-uma-presenca.csv";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-  showToast("success", "Arquivo CSV baixado com sucesso.");
+  printWindow.document.write(`
+    <!doctype html>
+    <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Relatório de presença - UMADEB</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            margin: 24px;
+            color: #1f2937;
+            background: #fff;
+          }
+          h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+            color: #0f172a;
+          }
+          .subtitle {
+            margin: 0 0 20px;
+            color: #475569;
+            font-size: 14px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+          }
+          th, td {
+            border: 1px solid #dbe4f0;
+            padding: 10px 8px;
+            text-align: left;
+            vertical-align: top;
+          }
+          th {
+            background: #eff6ff;
+            color: #0f172a;
+            font-weight: 700;
+          }
+          .presence-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 11px;
+            border: 1px solid transparent;
+          }
+          .status-sim {
+            background: #dcfce7;
+            color: #166534;
+            border-color: #86efac;
+          }
+          .status-nao {
+            background: #fee2e2;
+            color: #991b1b;
+            border-color: #fca5a5;
+          }
+          .status-pendente {
+            background: #fef3c7;
+            color: #92400e;
+            border-color: #fcd34d;
+          }
+          @media print {
+            body { margin: 0; }
+            button { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Relatório de presença</h1>
+        <p class="subtitle">UMADEB Setor 53 · ${new Date().toLocaleDateString("pt-BR")}</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Congregação</th>
+              <th>Dia</th>
+              <th>Evangélico</th>
+              <th>Presença</th>
+              <th>Telefone</th>
+              <th>Observações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+  showToast("success", "Janela de impressão aberta. Salve como PDF.");
 }
 
 function escapeHtml(value) {
