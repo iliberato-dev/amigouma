@@ -842,7 +842,41 @@ tbody tr:nth-child(even) {
   transition:
     transform 0.22s ease,
     box-shadow 0.22s ease,
-    border-color 0.22s ease;
+    border-color 0.22s ease,
+    background 0.25s ease;
+}
+
+.cadastro-card.presence-sim {
+  border-color: #10b981;
+  background:
+    radial-gradient(
+      circle at 100% -10%,
+      rgba(16, 185, 129, 0.17),
+      transparent 45%
+    ),
+    linear-gradient(165deg, #f1fff8, #f8fffb);
+}
+
+.cadastro-card.presence-nao {
+  border-color: #ef4444;
+  background:
+    radial-gradient(
+      circle at 100% -10%,
+      rgba(239, 68, 68, 0.15),
+      transparent 45%
+    ),
+    linear-gradient(165deg, #fff7f7, #fffdfd);
+}
+
+.cadastro-card.presence-pendente {
+  border-color: #f59e0b;
+  background:
+    radial-gradient(
+      circle at 100% -10%,
+      rgba(245, 158, 11, 0.15),
+      transparent 45%
+    ),
+    linear-gradient(165deg, #fffaf1, #fffdf9);
 }
 
 .cadastro-card:hover {
@@ -887,6 +921,37 @@ tbody tr:nth-child(even) {
   margin: 0;
   display: grid;
   gap: 0.18rem;
+}
+
+.presence-field {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.presence-field strong {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.42px;
+  color: #475569;
+}
+
+.presence-select {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 10px;
+  border: 1px solid #dbe7ff;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 0.55rem 0.7rem;
+  font-size: 0.9rem;
+  font-family: "Nunito", sans-serif;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.presence-select:focus {
+  outline: 2px solid rgba(59, 130, 246, 0.25);
+  outline-offset: 2px;
 }
 
 .card-grid strong {

@@ -1,5 +1,5 @@
 const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbwXFZ8225DlAQaxKamybXyWAutZ5Mso2TR2RcKwfgEt7WXaGXwA79TR71hdX12yMroaIw/exec";
+  "https://script.google.com/macros/s/AKfycbzqKNJ4FSEYrR6NlICw-IjhmCplvvb9hW98qmVQ6jO8/dev";
 
 const GOOGLE_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1uQKBF1ADRcwUdTy8ORg9xDDeURV4gTL10oCRVf1cBys/edit?gid=0#gid=0";
@@ -971,9 +971,22 @@ function showCount(options = {}) {
             <option value="Não">Evangélico: Não</option>
             <option value="Afastado(a)">Evangélico: Afastado(a)</option>
           </select>
+          <select id="presenca-filter">
+            <option value="">Presença (todos)</option>
+            <option value="Sim">Presença: Sim</option>
+            <option value="Não">Presença: Não</option>
+            <option value="Ainda não confirmou">Presença: Ainda não confirmou</option>
+          </select>
+          <button id="download-csv-button" type="button">Baixar CSV</button>
         </div>
         <div id="table-container">${renderLoadingState()}</div>
     `;
+
+  const downloadButton = document.getElementById("download-csv-button");
+  if (downloadButton) {
+    downloadButton.addEventListener("click", downloadRegisteredRowsAsCsv);
+  }
+
   fetchRegistered();
 }
 
@@ -1283,6 +1296,103 @@ function getObservacoesText(form) {
   return normalizedValues.join("; ");
 }
 
+function escapeCsvCell(value) {
+  const text = String(value ?? "");
+  const escaped = text.replace(/"/g, '""');
+  return `"${escaped}"`;
+}
+
+function updatePresenceForRow(rowNumber, newValue) {
+  const safeRowNumber = Number(rowNumber);
+  if (!Number.isFinite(safeRowNumber) || safeRowNumber < 2) {
+    showToast(
+      "error",
+      "Dados do cadastro nao foram encontrados para atualizar.",
+    );
+    return;
+  }
+
+  const normalizedValue = ["Sim", "Não", "Ainda não confirmou"].includes(
+    newValue,
+  )
+    ? newValue
+    : "Ainda não confirmou";
+
+  jsonpRequest(APPS_SCRIPT_URL, {
+    action: "updatePresence",
+    row: safeRowNumber,
+    presenca_evento: normalizedValue,
+  })
+    .then((response) => {
+      if (response && response.result === "success") {
+        const rowIndex = registeredRows.findIndex(
+          (row) => Number(row.row_number) === safeRowNumber,
+        );
+
+        if (rowIndex >= 0) {
+          registeredRows[rowIndex].presenca_evento = normalizedValue;
+        }
+
+        showToast("success", "Presença atualizada com sucesso.");
+        applyTableFilters();
+        return;
+      }
+
+      showToast("error", "Nao foi possivel atualizar a presença.");
+    })
+    .catch(() => {
+      showToast("error", "Nao foi possivel atualizar a presença.");
+    });
+}
+
+function downloadRegisteredRowsAsCsv() {
+  if (!registeredRows.length) {
+    showToast("error", "Nenhum cadastro para exportar.");
+    return;
+  }
+
+  const headers = [
+    "nome_cadastrante",
+    "congregacao",
+    "nome_amigo",
+    "telefone",
+    "endereco",
+    "evangelico",
+    "dia_evento",
+    "presenca_evento",
+    "observacoes",
+  ];
+
+  const rows = registeredRows.map((row) => [
+    row.nome_cadastrante || "",
+    row.congregacao || "",
+    row.nome_amigo || "",
+    row.telefone || "",
+    row.endereco || "",
+    row.evangelico || "",
+    row.dia_evento || "",
+    row.presenca_evento || "",
+    row.observacoes || "",
+  ]);
+
+  const csv = [headers, ...rows]
+    .map((line) => line.map(escapeCsvCell).join(","))
+    .join("\n");
+
+  const blob = new Blob(["\uFEFF" + csv], {
+    type: "text/csv;charset=utf-8;",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "cadastros-uma-presenca.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  showToast("success", "Arquivo CSV baixado com sucesso.");
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -1336,9 +1446,19 @@ function renderTable(rows) {
   }
 
   const cards = rows
-    .map(
-      (row, index) => `
-      <article class="cadastro-card" style="--i:${index}">
+    .map((row, index) => {
+      const presenceValue = String(
+        row.presenca_evento || "Ainda não confirmou",
+      ).trim();
+      const presenceClass =
+        presenceValue === "Sim"
+          ? "presence-sim"
+          : presenceValue === "Não"
+            ? "presence-nao"
+            : "presence-pendente";
+
+      return `
+      <article class="cadastro-card ${presenceClass}" style="--i:${index}">
         <header class="card-head">
           <span class="card-chip">${escapeHtml(row.congregacao)}</span>
         </header>
@@ -1348,12 +1468,23 @@ function renderTable(rows) {
           <p><strong>Telefone</strong>${renderWhatsAppPhone(row.telefone, row.nome_amigo)}</p>
           <p><strong>Evangélico</strong><span>${escapeHtml(row.evangelico || "-")}</span></p>
           <p><strong>Dia evento</strong><span>${escapeHtml(row.dia_evento || "-")}</span></p>
+          <label class="presence-field">
+            <strong>Presença</strong>
+            <select class="presence-select" data-row-number="${escapeHtml(String(row.row_number || ""))}">
+              ${["Sim", "Não", "Ainda não confirmou"]
+                .map(
+                  (option) =>
+                    `<option value="${escapeHtml(option)}" ${presenceValue === option ? "selected" : ""}>${escapeHtml(option)}</option>`,
+                )
+                .join("")}
+            </select>
+          </label>
           <p><strong>Observações</strong><span>${escapeHtml(row.observacoes || "-")}</span></p>
           <p class="card-address"><strong>Endereço</strong><span>${escapeHtml(row.endereco)}</span></p>
         </div>
       </article>
-    `,
-    )
+    `;
+    })
     .join("");
 
   return `
@@ -1404,6 +1535,13 @@ function bindPaginationEvents(totalPages) {
       renderFilteredResults();
     });
   });
+
+  const presenceSelects = document.querySelectorAll(".presence-select");
+  presenceSelects.forEach((select) => {
+    select.onchange = () => {
+      updatePresenceForRow(select.dataset.rowNumber, select.value);
+    };
+  });
 }
 
 function renderFilteredResults() {
@@ -1433,11 +1571,13 @@ function applyTableFilters() {
   const congregacaoFilter = document.getElementById("congregacao-filter");
   const diaEventoFilter = document.getElementById("dia-evento-filter");
   const evangelicoFilter = document.getElementById("evangelico-filter");
+  const presencaFilter = document.getElementById("presenca-filter");
   if (
     !searchInput ||
     !congregacaoFilter ||
     !diaEventoFilter ||
-    !evangelicoFilter
+    !evangelicoFilter ||
+    !presencaFilter
   )
     return;
 
@@ -1445,13 +1585,15 @@ function applyTableFilters() {
   const selectedCongregacao = normalizeText(congregacaoFilter.value);
   const selectedDiaEvento = normalizeText(diaEventoFilter.value);
   const selectedEvangelico = normalizeText(evangelicoFilter.value);
+  const selectedPresenca = normalizeText(presencaFilter.value);
 
   filteredRows = registeredRows.filter((row) => {
     const rowCongregacao = normalizeText(row.congregacao);
     const rowDiaEvento = normalizeText(row.dia_evento);
     const rowEvangelico = normalizeText(row.evangelico);
+    const rowPresenca = normalizeText(row.presenca_evento);
     const searchable = normalizeText(
-      `${row.nome_cadastrante} ${row.nome_amigo} ${row.telefone} ${row.endereco} ${row.evangelico || ""} ${row.dia_evento || ""} ${row.observacoes || ""}`,
+      `${row.nome_cadastrante} ${row.nome_amigo} ${row.telefone} ${row.endereco} ${row.evangelico || ""} ${row.dia_evento || ""} ${row.presenca_evento || ""} ${row.observacoes || ""}`,
     );
 
     const matchesCongregacao =
@@ -1460,10 +1602,16 @@ function applyTableFilters() {
       !selectedDiaEvento || rowDiaEvento === selectedDiaEvento;
     const matchesEvangelico =
       !selectedEvangelico || rowEvangelico === selectedEvangelico;
+    const matchesPresenca =
+      !selectedPresenca || rowPresenca === selectedPresenca;
     const matchesTerm = !term || searchable.includes(term);
 
     return (
-      matchesCongregacao && matchesDiaEvento && matchesEvangelico && matchesTerm
+      matchesCongregacao &&
+      matchesDiaEvento &&
+      matchesEvangelico &&
+      matchesPresenca &&
+      matchesTerm
     );
   });
 
@@ -1477,13 +1625,15 @@ function setupTableFilters(rows) {
   const congregacaoFilter = document.getElementById("congregacao-filter");
   const diaEventoFilter = document.getElementById("dia-evento-filter");
   const evangelicoFilter = document.getElementById("evangelico-filter");
+  const presencaFilter = document.getElementById("presenca-filter");
 
   if (
     !filterWrap ||
     !searchInput ||
     !congregacaoFilter ||
     !diaEventoFilter ||
-    !evangelicoFilter
+    !evangelicoFilter ||
+    !presencaFilter
   )
     return;
 
@@ -1530,11 +1680,21 @@ function setupTableFilters(rows) {
       )
       .join("");
 
+  presencaFilter.innerHTML =
+    '<option value="">Presença (todos)</option>' +
+    ["Sim", "Não", "Ainda não confirmou"]
+      .map(
+        (opcao) =>
+          `<option value="${escapeHtml(opcao)}">Presença: ${escapeHtml(opcao)}</option>`,
+      )
+      .join("");
+
   if (!searchInput.dataset.bound) {
     searchInput.addEventListener("input", applyTableFilters);
     congregacaoFilter.addEventListener("change", applyTableFilters);
     diaEventoFilter.addEventListener("change", applyTableFilters);
     evangelicoFilter.addEventListener("change", applyTableFilters);
+    presencaFilter.addEventListener("change", applyTableFilters);
     searchInput.dataset.bound = "1";
   }
 
@@ -1576,7 +1736,10 @@ function fetchRegistered() {
       }
 
       if (Array.isArray(data.rows)) {
-        registeredRows = data.rows;
+        registeredRows = data.rows.map((row, index) => ({
+          ...row,
+          row_number: Number(row.row_number) || index + 2,
+        }));
         saveTransitionNames(registeredRows);
         setupTableFilters(registeredRows);
         applyTableFilters();

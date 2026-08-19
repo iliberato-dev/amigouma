@@ -90,12 +90,13 @@ function doGet(e) {
     var telefone = formatPhone(p.telefone || "");
     var evangelico = normalizeSpaces(p.evangelico || "");
     var diaEvento = normalizeSpaces(p.dia_evento || "");
+    var presencaEvento = normalizeSpaces(p.presenca_evento || "");
     var observacoes = normalizeSpaces(p.observacoes || "");
     var endereco = normalizeSpaces(p.endereco || "");
 
     var lastRow = sheet.getLastRow();
     if (lastRow > 1) {
-      var existingValues = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+      var existingValues = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
       if (isDuplicateRow(existingValues, congregacao, nomeAmigo, telefone)) {
         return outputJsonp(
           { result: "duplicate", message: "Cadastro ja existente." },
@@ -112,8 +113,26 @@ function doGet(e) {
       endereco,
       evangelico,
       diaEvento,
+      presencaEvento,
       observacoes,
     ]);
+    return outputJsonp({ result: "success" }, callback);
+  }
+
+  if (action === "updatePresence") {
+    var rowNumber = Number(p.row || 0);
+    var presencaEvento = normalizeSpaces(p.presenca_evento || "");
+
+    if (!rowNumber || rowNumber < 2 || rowNumber > sheet.getLastRow()) {
+      return outputJsonp(
+        { result: "error", message: "Linha invalida." },
+        callback,
+      );
+    }
+
+    sheet
+      .getRange(rowNumber, 8)
+      .setValue(presencaEvento || "Ainda não confirmou");
     return outputJsonp({ result: "success" }, callback);
   }
 
@@ -128,9 +147,10 @@ function doGet(e) {
       return outputJsonp({ rows: [] }, callback);
     }
 
-    var values = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
-    var rows = values.map(function (r) {
+    var values = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
+    var rows = values.map(function (r, index) {
       return {
+        row_number: index + 2,
         nome_cadastrante: r[0] || "",
         congregacao: r[1] || "",
         nome_amigo: r[2] || "",
@@ -138,7 +158,8 @@ function doGet(e) {
         endereco: r[4] || "",
         evangelico: r[5] || "",
         dia_evento: r[6] || "",
-        observacoes: r[7] || "",
+        presenca_evento: r[7] || "Ainda não confirmou",
+        observacoes: r[8] || "",
       };
     });
 
