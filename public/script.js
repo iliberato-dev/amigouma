@@ -1393,21 +1393,99 @@ function downloadRegisteredRowsAsPdf() {
         <meta charset="UTF-8" />
         <title>Relatório de presença - UMADEB</title>
         <style>
+          * { box-sizing: border-box; }
           body {
             font-family: Arial, sans-serif;
-            margin: 24px;
+            margin: 0;
+            padding: 26px;
             color: #1f2937;
-            background: #fff;
+            background: #f3f7fb;
           }
-          h1 {
-            margin: 0 0 8px;
-            font-size: 28px;
+          .sheet {
+            max-width: 1220px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 2px solid #dbeaf8;
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+          }
+          .cover {
+            background: linear-gradient(135deg, #0f172a 0%, #0ea5e9 42%, #0284c7 100%);
+            color: #fff;
+            padding: 30px 28px 24px;
+            position: relative;
+          }
+          .cover::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at top right, rgba(255,255,255,0.18), transparent 32%);
+            pointer-events: none;
+          }
+          .cover-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: end;
+            gap: 20px;
+          }
+          .brand {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+          }
+          .brand strong {
+            font-size: 13px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+          }
+          .brand span {
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            opacity: 0.8;
+          }
+          .cover-title {
+            text-align: right;
+          }
+          .cover-title h1 {
+            margin: 0;
+            font-size: 29px;
+            line-height: 1.2;
+          }
+          .cover-title p {
+            margin: 6px 0 0;
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            opacity: 0.92;
+          }
+          .content {
+            padding: 20px 24px 24px;
+          }
+          .meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 14px;
+            padding: 12px 14px;
+            border: 1px solid #dceaf8;
+            border-radius: 12px;
+            background: #f6fbff;
             color: #0f172a;
           }
-          .subtitle {
-            margin: 0 0 20px;
+          .meta-row strong {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
             color: #475569;
+          }
+          .meta-row span {
             font-size: 14px;
+            font-weight: 700;
           }
           table {
             width: 100%;
@@ -1416,22 +1494,26 @@ function downloadRegisteredRowsAsPdf() {
           }
           th, td {
             border: 1px solid #dbe4f0;
-            padding: 10px 8px;
+            padding: 9px 8px;
             text-align: left;
             vertical-align: top;
           }
           th {
-            background: #eff6ff;
+            background: #eaf6ff;
             color: #0f172a;
-            font-weight: 700;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-size: 10px;
           }
           .presence-badge {
             display: inline-block;
             padding: 4px 10px;
             border-radius: 999px;
-            font-weight: 700;
+            font-weight: 800;
             font-size: 11px;
             border: 1px solid transparent;
+            white-space: nowrap;
           }
           .status-sim {
             background: #dcfce7;
@@ -1448,31 +1530,69 @@ function downloadRegisteredRowsAsPdf() {
             color: #92400e;
             border-color: #fcd34d;
           }
+          .footer-note {
+            margin-top: 18px;
+            padding-top: 12px;
+            border-top: 2px solid #e2e8f0;
+            font-size: 11px;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            text-align: right;
+          }
           @media print {
-            body { margin: 0; }
-            button { display: none; }
+            body { margin: 0; padding: 0; background: #fff; }
+            .sheet { border: none; border-radius: 0; box-shadow: none; }
           }
         </style>
       </head>
       <body>
-        <h1>Relatório de presença</h1>
-        <p class="subtitle">UMADEB Setor 53 · ${new Date().toLocaleDateString("pt-BR")}</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Congregação</th>
-              <th>Dia</th>
-              <th>Evangélico</th>
-              <th>Presença</th>
-              <th>Telefone</th>
-              <th>Observações</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml}
-          </tbody>
-        </table>
+        <div class="sheet">
+          <div class="cover">
+            <div class="cover-content">
+              <div class="brand">
+                <strong>UMADEB</strong>
+                <span>Setor 53</span>
+              </div>
+              <div class="cover-title">
+                <h1>Relatório geral de presença</h1>
+                <p>${new Date().toLocaleDateString("pt-BR")}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="content">
+            <div class="meta-row">
+              <div>
+                <strong>Total de registros</strong><br />
+                <span>${rows.length}</span>
+              </div>
+              <div>
+                <strong>Gerado em</strong><br />
+                <span>${new Date().toLocaleString("pt-BR")}</span>
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Congregação</th>
+                  <th>Dia</th>
+                  <th>Evangélico</th>
+                  <th>Presença</th>
+                  <th>Telefone</th>
+                  <th>Observações</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+
+            <div class="footer-note">Documento oficial · UMADEB</div>
+          </div>
+        </div>
       </body>
     </html>
   `);
@@ -1569,6 +1689,9 @@ function renderTable(rows) {
                 .join("")}
             </select>
           </label>
+          <button class="individual-pdf-button" type="button" data-row-number="${escapeHtml(String(row.row_number || ""))}">
+            Ficha individual
+          </button>
           <p><strong>Observações</strong><span>${escapeHtml(row.observacoes || "-")}</span></p>
           <p class="card-address"><strong>Endereço</strong><span>${escapeHtml(row.endereco)}</span></p>
         </div>
@@ -1632,6 +1755,279 @@ function bindPaginationEvents(totalPages) {
       updatePresenceForRow(select.dataset.rowNumber, select.value);
     };
   });
+
+  const individualButtons = document.querySelectorAll(".individual-pdf-button");
+  individualButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const rowNumber = Number(button.dataset.rowNumber);
+      const row = registeredRows.find(
+        (item) => Number(item.row_number) === rowNumber,
+      );
+      if (row) {
+        generateIndividualFichaPdf(row);
+      }
+    });
+  });
+}
+
+function generateIndividualFichaPdf(row) {
+  const printWindow = window.open("", "_blank", "width=1100,height=900");
+  if (!printWindow) {
+    showToast("error", "O navegador bloqueou a janela da ficha individual.");
+    return;
+  }
+
+  const name = row.nome_amigo || row.nome_cadastrante || "-";
+  const presentStatus = String(
+    row.presenca_evento || "Ainda não confirmou",
+  ).trim();
+  const dateText = new Date().toLocaleDateString("pt-BR");
+
+  printWindow.document.write(`
+    <!doctype html>
+    <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Ficha individual - ${escapeHtml(name)}</title>
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 28px 30px 22px;
+            color: #0f172a;
+            background: #ffffff;
+          }
+          .sheet {
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            border: 2px solid #d9e6f5;
+            border-radius: 16px;
+            padding: 22px 24px 18px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+          }
+          .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            border-bottom: 3px solid #0ea5e9;
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+          }
+          .brand {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+          }
+          .brand strong {
+            font-size: 13px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #0f172a;
+          }
+          .brand span {
+            font-size: 11px;
+            color: #475569;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+          }
+          h1 {
+            margin: 0;
+            font-size: 28px;
+            color: #0f172a;
+            text-align: left;
+          }
+          .subtitle {
+            margin: 0;
+            font-size: 12px;
+            color: #475569;
+            text-align: right;
+            font-weight: 700;
+          }
+          .section-title {
+            margin: 0 0 12px;
+            font-size: 16px;
+            padding: 8px 12px;
+            background: #e0f2fe;
+            color: #0c4a6e;
+            border-left: 5px solid #0ea5e9;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            font-weight: 800;
+          }
+          .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(220px, 1fr));
+            gap: 12px 18px;
+            margin-bottom: 18px;
+          }
+          .field {
+            border: 1px solid #dbe4f0;
+            border-radius: 10px;
+            padding: 10px 12px;
+            background: #ffffff;
+          }
+          .label {
+            display: block;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #475569;
+            margin-bottom: 6px;
+            font-weight: 800;
+          }
+          .value {
+            font-size: 15px;
+            font-weight: 700;
+            word-break: break-word;
+            line-height: 1.35;
+          }
+          .form-box {
+            border: 2px solid #dfeaf8;
+            border-radius: 14px;
+            padding: 16px;
+            background: #fafcff;
+            margin-top: 10px;
+          }
+          .decision-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin: 8px 0 16px;
+            padding: 10px 12px;
+            border: 1px solid #cfe8ff;
+            border-radius: 10px;
+            background: #f0f9ff;
+            font-weight: 800;
+            font-size: 15px;
+          }
+          .decision-row input {
+            width: 18px;
+            height: 18px;
+            accent-color: #0ea5e9;
+          }
+          .input-line {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 9px 10px;
+            width: 100%;
+            font-size: 14px;
+            box-sizing: border-box;
+            margin-top: 4px;
+            background: #fff;
+          }
+          textarea.input-line {
+            min-height: 110px;
+            resize: none;
+          }
+          .signature-area {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(220px, 1fr));
+            gap: 18px;
+            margin-top: 22px;
+          }
+          .signature-box {
+            border-top: 2px solid #0f172a;
+            padding-top: 8px;
+            font-size: 12px;
+            color: #475569;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+          }
+          @media print {
+            body { margin: 0; padding: 16px; }
+            .sheet { border: 1px solid #d9e6f5; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="sheet">
+          <div class="topbar">
+            <div class="brand">
+              <strong>UMADEB</strong>
+              <span>Ficha de decisão</span>
+            </div>
+            <h1>Registro de decisão pessoal</h1>
+            <p class="subtitle">Gerado em ${dateText}</p>
+          </div>
+
+          <p class="section-title">Dados do cadastro</p>
+          <div class="grid">
+            <div class="field">
+              <span class="label">Nome</span>
+              <div class="value">${escapeHtml(name)}</div>
+            </div>
+            <div class="field">
+              <span class="label">Congregação</span>
+              <div class="value">${escapeHtml(row.congregacao || "-")}</div>
+            </div>
+            <div class="field">
+              <span class="label">Cadastrante</span>
+              <div class="value">${escapeHtml(row.nome_cadastrante || "-")}</div>
+            </div>
+            <div class="field">
+              <span class="label">Telefone</span>
+              <div class="value">${escapeHtml(row.telefone || "-")}</div>
+            </div>
+            <div class="field">
+              <span class="label">Dia do evento</span>
+              <div class="value">${escapeHtml(row.dia_evento || "-")}</div>
+            </div>
+            <div class="field">
+              <span class="label">Presença</span>
+              <div class="value">${escapeHtml(presentStatus)}</div>
+            </div>
+            <div class="field">
+              <span class="label">Evangélico</span>
+              <div class="value">${escapeHtml(row.evangelico || "-")}</div>
+            </div>
+            <div class="field">
+              <span class="label">Endereço</span>
+              <div class="value">${escapeHtml(row.endereco || "-")}</div>
+            </div>
+          </div>
+
+          <div class="form-box">
+            <p class="section-title" style="margin-top: 0; margin-bottom: 14px;">Formulário de quem aceitou a Cristo</p>
+
+            <div class="decision-row">
+              <input type="checkbox" checked />
+              <span>Aceitou a Cristo</span>
+            </div>
+
+            <div class="field" style="margin-bottom: 12px; background:#fff;">
+              <span class="label">Data da decisão</span>
+              <input class="input-line" type="text" value="${dateText}" />
+            </div>
+
+            <div class="field" style="margin-bottom: 12px; background:#fff;">
+              <span class="label">Responsável / discipulador</span>
+              <input class="input-line" type="text" value="" placeholder="Nome do responsável" />
+            </div>
+
+            <div class="field" style="margin-bottom: 12px; background:#fff;">
+              <span class="label">Detalhes da conversa / oração / acompanhamento</span>
+              <textarea class="input-line" placeholder="Descreva a conversa, oração, acompanhamento e próximos passos.">${escapeHtml(row.observacoes || "")}</textarea>
+            </div>
+
+            <div class="signature-area">
+              <div class="signature-box">Assinatura do responsável</div>
+              <div class="signature-box">Assinatura do participante</div>
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+  showToast("success", "Ficha individual aberta para impressão em PDF.");
 }
 
 function renderFilteredResults() {
