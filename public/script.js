@@ -1,4 +1,4 @@
-const APPS_SCRIPT_URL =
+﻿const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbyZGL1hXtzlM9L3JN1kii31Slq6QnbtSibFcozPhozp_Dn241hnc58W0Luh-E2oomODDg/exec";
 
 const GOOGLE_SHEET_URL =
@@ -1782,7 +1782,7 @@ function bindPaginationEvents(totalPages) {
   });
 }
 
-function generateIndividualFichaPdf(row) {
+function generateLegacyIndividualFichaPdf(row) {
   const printWindow = window.open("", "_blank", "width=1100,height=900");
   if (!printWindow) {
     showToast("error", "O navegador bloqueou a janela da ficha individual.");
@@ -2031,6 +2031,95 @@ function generateIndividualFichaPdf(row) {
               <div class="signature-box">Assinatura do participante</div>
             </div>
           </div>
+        </div>
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+  showToast("success", "Ficha individual aberta para impressão em PDF.");
+}
+
+function generateIndividualFichaPdf(row) {
+  const printWindow = window.open("", "_blank", "width=1100,height=900");
+  if (!printWindow) {
+    showToast("error", "O navegador bloqueou a janela da ficha individual.");
+    return;
+  }
+
+  const name = row.nome_amigo || "-";
+  const phone = row.telefone || "-";
+  const inviter = row.nome_cadastrante || "-";
+  const congregation = row.congregacao || "-";
+  const eventDay = row.dia_evento ? `Dia ${row.dia_evento}` : "Não informado";
+  const presence = row.presenca_evento || "Ainda não confirmou";
+  const specialCondition = row.observacoes || row.evangelico || "Não informado";
+  const generatedDate = new Date().toLocaleDateString("pt-BR");
+
+  const field = (number, label, value, className = "") => `
+    <div class="field ${className}">
+      <span class="field-number">${number}</span>
+      <span class="field-label">${label}</span>
+      <span class="field-value">${escapeHtml(value)}</span>
+    </div>`;
+
+  printWindow.document.write(`
+    <!doctype html>
+    <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Central de ligações - ${escapeHtml(name)}</title>
+        <style>
+          * { box-sizing: border-box; }
+          body { margin: 0; padding: 24px; color: #172033; background: #eef9fa; font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; }
+          .sheet { width: 100%; max-width: 820px; margin: 0 auto; border: 2px solid #b9e4e5; border-radius: 16px; padding: 16px; background: #fff; box-shadow: 0 8px 22px rgba(22, 108, 116, 0.12); }
+          .header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 14px; border-bottom: 3px solid #16b8b0; padding: 2px 0 12px; margin-bottom: 16px; }
+          .brand { color: #087e83; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+          .header-main { text-align: center; }
+          .header h1 { margin: 0; color: #123b5d; font-size: 19px; text-transform: uppercase; }
+          .header h2 { display: inline-block; margin: 5px 0 0; padding: 4px 9px; border-radius: 999px; background: #fff1b8; color: #806000; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+          .header-meta { color: #56808a; font-size: 9px; text-align: right; }
+          .section-title { margin: 0 0 10px; padding: 8px 10px; border-left: 4px solid #16b8b0; border-radius: 7px; background: #d9f5f3; color: #087e83; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+          .field { display: grid; grid-template-columns: 30px minmax(220px, 1fr) minmax(180px, 1.25fr); min-height: 40px; margin-bottom: 7px; border: 1px solid #c3e2e4; border-radius: 9px; overflow: hidden; background: #fff; font-size: 10px; }
+          .field-number, .field-label, .field-value { display: flex; align-items: center; padding: 8px 10px; }
+          .field-number { justify-content: center; background: #ffe1d8; color: #c6533e; font-weight: 800; }
+          .field-label { border-left: 1px solid #c3e2e4; color: #36556d; font-weight: 700; }
+          .field-value { justify-content: flex-start; border-left: 1px solid #c3e2e4; color: #172033; font-weight: 700; word-break: break-word; }
+          .highlight { background: #fffdf2; }
+          .notes-box { margin-top: 14px; border: 1px solid #c3e2e4; border-radius: 10px; overflow: hidden; }
+          .notes-title { padding: 9px 10px; background: #d9f5f3; color: #087e83; font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+          .notes { min-height: 145px; padding: 10px; background: #fff; font-size: 10px; }
+          .footer { display: flex; justify-content: space-between; margin-top: 12px; color: #6a8092; font-size: 8px; }
+          @media print { @page { size: A4 portrait; margin: 12mm; } body { margin: 0; padding: 0; background: #fff; } .sheet { max-width: none; border-radius: 0; box-shadow: none; } }
+        </style>
+      </head>
+      <body>
+        <div class="sheet">
+          <div class="header">
+            <div class="brand">UMADEB<br />Itaim Paulista</div>
+            <div class="header-main">
+              <h1>Projeto Amigo UMA</h1>
+              <h2>2026 · Central de ligações</h2>
+            </div>
+            <div class="header-meta">Ficha individual<br />Gerada em ${generatedDate}</div>
+          </div>
+          <p class="section-title">Dados da central de ligações</p>
+          ${field(1, "Congregação de quem convidou", congregation)}
+          ${field(2, "Nome do Amigo UMA", name)}
+          ${field(3, "Nº de Telefone do Amigo UMA", phone)}
+          ${field(4, "O convidado aceita receber nossa ligação?", presence)}
+          ${field(5, "Nome de quem convidou", inviter)}
+          ${field(6, "Nº de Telefone de quem convidou", "Não informado")}
+          ${field(7, "O Amigo UMA tem preferência para algum dia específico para nos visitar?", eventDay)}
+          ${field(8, "Alguma Condição Especial", specialCondition, "highlight")}
+          ${field(9, "Observação", row.observacoes || "Não informado", "highlight")}
+          <div class="notes-box">
+            <div class="notes-title">Observações da Central de Ligações</div>
+            <div class="notes"></div>
+          </div>
+          <div class="footer"><span>Registro gerado em ${generatedDate}</span><span>UMADEB ITAIM PAULISTA</span></div>
         </div>
       </body>
     </html>
