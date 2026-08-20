@@ -536,6 +536,22 @@ button[type="submit"]:disabled {
   box-shadow: 0 8px 16px rgba(14, 165, 233, 0.22);
 }
 
+.btn-secondary {
+  background: #fff;
+  color: var(--brand, #0ea5e9);
+  border: 1.5px solid var(--brand, #0ea5e9);
+  padding: 0.6rem 1.1rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 0.75rem;
+}
+
+.btn-secondary:hover {
+  background: #e0f2fe;
+}
+
 .success {
   color: #166534;
   margin-top: 0.8rem;

@@ -1,5 +1,5 @@
 const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzqKNJ4FSEYrR6NlICw-IjhmCplvvb9hW98qmVQ6jO8/dev";
+  "https://script.google.com/macros/s/AKfycbyZGL1hXtzlM9L3JN1kii31Slq6QnbtSibFcozPhozp_Dn241hnc58W0Luh-E2oomODDg/exec";
 
 const GOOGLE_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1uQKBF1ADRcwUdTy8ORg9xDDeURV4gTL10oCRVf1cBys/edit?gid=0#gid=0";
@@ -404,7 +404,7 @@ function setupAuthButton() {
 }
 
 // Requisição JSONP para contornar CORS no Google Apps Script.
-function jsonpRequest(url, params = {}) {
+function jsonpRequestOnce(url, params = {}, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const callbackName = `cb_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
     const script = document.createElement("script");
@@ -435,10 +435,22 @@ function jsonpRequest(url, params = {}) {
     timeoutId = setTimeout(() => {
       cleanup();
       reject(new Error("Tempo de resposta excedido"));
-    }, 12000);
+    }, timeoutMs);
 
     script.src = fullUrl;
     document.body.appendChild(script);
+  });
+}
+
+// Tenta novamente algumas vezes antes de desistir, pois o Apps Script
+// costuma falhar de forma intermitente (cold start / limite de execução).
+function jsonpRequest(url, params = {}, retries = 2) {
+  return jsonpRequestOnce(url, params).catch((error) => {
+    if (retries <= 0) throw error;
+    const delay = 1000 * (3 - retries); // 1s, depois 2s
+    return new Promise((resolve) => setTimeout(resolve, delay)).then(() =>
+      jsonpRequest(url, params, retries - 1),
+    );
   });
 }
 
@@ -2248,7 +2260,12 @@ function fetchRegistered() {
     .catch((error) => {
       document.getElementById("count").textContent = "Falha ao carregar";
       document.getElementById("table-container").innerHTML =
-        `<p class="error">${escapeHtml(getFriendlyApiError(error))}</p>`;
+        `<p class="error">${escapeHtml(getFriendlyApiError(error))}</p>
+        <button type="button" id="retry-fetch-btn" class="btn-secondary">Tentar novamente</button>`;
+      const retryBtn = document.getElementById("retry-fetch-btn");
+      if (retryBtn) {
+        retryBtn.addEventListener("click", () => fetchRegistered());
+      }
     });
 }
 
